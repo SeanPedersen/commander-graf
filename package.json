@@ -43,7 +43,7 @@
     "dev:server": "tsx watch server/index.ts",
     "dev:client": "vite --port 5200",
     "dev:electron": "NODE_ENV=development electron electron/main.ts",
-    "start": "tsx server/index.ts",
+    "start": "vite build --emptyOutDir && tsx server/index.ts",
     "build": "vite build --emptyOutDir",
     "build:electron": "node scripts/build-electron.mjs",
     "dist": "npm run build:electron && electron-builder",
