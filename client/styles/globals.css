@@ -2,12 +2,98 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ─── Dark Base ─────────────────────────────────── */
+/* ─── Palettes ──────────────────────────────────── */
+
+/*
+ * Channel triplets (not hex) so Tailwind's `<alpha-value>` opacity modifiers
+ * work — see tailwind.config.js. `:root` is the dark default; the light
+ * palette is applied by `data-theme="light"`, which is set pre-paint by the
+ * bootstrap script in client/index.html and kept in sync by deck-store.
+ */
+
+:root {
+  color-scheme: dark;
+
+  --deck-bg: 10 10 15;
+  --deck-surface: 18 18 26;
+  --deck-surface-2: 26 26 37;
+  --deck-surface-3: 34 34 47;
+  --deck-border: 42 42 58;
+  --deck-border-light: 58 58 74;
+  --deck-accent: 99 102 241;
+  --deck-accent-hover: 129 140 248;
+  --deck-accent-dim: 79 70 229;
+  --deck-success: 34 197 94;
+  --deck-success-hover: 74 222 128;
+  --deck-warning: 245 158 11;
+  --deck-error: 239 68 68;
+  --deck-muted: 107 114 128;
+  --deck-text: 229 231 235;
+  --deck-text-dim: 156 163 175;
+  --deck-text-bright: 249 250 251;
+  --deck-scrim: 0 0 0;
+
+  --deck-info: 96 165 250;
+  --deck-thinking: 192 132 252;
+  --deck-diff-add: 74 222 128;
+  --deck-diff-del: 248 113 113;
+  --deck-diff-hunk: 96 165 250;
+
+  --deck-role-researcher: 216 180 254;
+  --deck-role-implementer: 147 197 253;
+  --deck-role-tester: 110 231 183;
+  --deck-role-reviewer: 252 211 77;
+  --deck-role-devops: 253 186 116;
+
+  /* React Flow canvas — see client/styles/canvas-colors.ts for the JS mirror. */
+  --deck-canvas-dot: 26 26 37;
+  --deck-canvas-edge: 58 58 74;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+
+  --deck-bg: 247 247 250;
+  --deck-surface: 255 255 255;
+  --deck-surface-2: 240 240 245;
+  --deck-surface-3: 230 230 238;
+  --deck-border: 214 214 226;
+  --deck-border-light: 190 190 206;
+  --deck-accent: 79 70 229;
+  --deck-accent-hover: 67 56 202;
+  --deck-accent-dim: 99 102 241;
+  --deck-success: 21 128 61;
+  --deck-success-hover: 22 101 52;
+  --deck-warning: 180 83 9;
+  --deck-error: 185 28 28;
+  --deck-muted: 93 100 112;
+  --deck-text: 31 36 48;
+  --deck-text-dim: 65 75 90;
+  --deck-text-bright: 11 13 18;
+  --deck-scrim: 15 18 28;
+
+  --deck-info: 29 78 216;
+  --deck-thinking: 126 34 206;
+  --deck-diff-add: 22 101 52;
+  --deck-diff-del: 153 27 27;
+  --deck-diff-hunk: 30 64 175;
+
+  --deck-role-researcher: 126 34 206;
+  --deck-role-implementer: 29 78 216;
+  --deck-role-tester: 4 120 87;
+  --deck-role-reviewer: 180 83 9;
+  --deck-role-devops: 194 65 12;
+
+  --deck-canvas-dot: 205 205 218;
+  --deck-canvas-edge: 168 168 186;
+}
+
+/* ─── Base ──────────────────────────────────────── */
 
 @layer base {
   * {
     scrollbar-width: thin;
-    scrollbar-color: #3a3a4a transparent;
+    scrollbar-color: rgb(var(--deck-border-light)) transparent;
   }
 
   *::-webkit-scrollbar {
@@ -20,17 +106,17 @@
   }
 
   *::-webkit-scrollbar-thumb {
-    background: #3a3a4a;
+    background: rgb(var(--deck-border-light));
     border-radius: 3px;
   }
 
   *::-webkit-scrollbar-thumb:hover {
-    background: #4a4a5a;
+    background: rgb(var(--deck-muted));
   }
 
   ::selection {
-    background: rgba(99, 102, 241, 0.3);
-    color: #f9fafb;
+    background: rgb(var(--deck-accent) / 0.3);
+    color: rgb(var(--deck-text-bright));
   }
 }
 
@@ -83,10 +169,10 @@
   50% { opacity: 0.4; }
 }
 
-/* ─── React Flow Dark Theme ─────────────────────── */
+/* ─── React Flow Theming ────────────────────────── */
 
 .react-flow__background {
-  background-color: #0a0a0f !important;
+  background-color: rgb(var(--deck-bg)) !important;
 }
 
 /* Remove default white node borders and backgrounds */
@@ -111,59 +197,61 @@
 
 /* Handle styling */
 .react-flow__handle {
-  background: #3a3a4a !important;
+  background: rgb(var(--deck-border-light)) !important;
   border: none !important;
   width: 6px !important;
   height: 6px !important;
 }
 
-/* Edge styling */
+/*
+ * Edges and arrowheads are deliberately NOT !important: the canvases set a
+ * per-edge stroke to encode run status (running/failed), and an !important
+ * stylesheet rule would silently win over those inline styles.
+ */
 .react-flow__edge-path {
-  stroke: #3a3a4a !important;
-  stroke-width: 1.5px !important;
+  stroke: rgb(var(--deck-canvas-edge));
+  stroke-width: 1.5px;
 }
 
 .react-flow__edge.animated .react-flow__edge-path {
-  stroke: #6366f1 !important;
-  stroke-dasharray: 5 !important;
+  stroke-dasharray: 5;
 }
 
-/* Marker (arrow) colors */
 .react-flow__arrowhead polyline,
 .react-flow__arrowhead polygon {
-  stroke: #3a3a4a !important;
-  fill: #3a3a4a !important;
+  stroke: rgb(var(--deck-canvas-edge));
+  fill: rgb(var(--deck-canvas-edge));
 }
 
 /* Controls */
 .react-flow__controls {
-  background: #12121a !important;
-  border: 1px solid #2a2a3a !important;
+  background: rgb(var(--deck-surface)) !important;
+  border: 1px solid rgb(var(--deck-border)) !important;
   border-radius: 8px !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+  box-shadow: 0 4px 12px rgb(var(--deck-scrim) / 0.3) !important;
 }
 
 .react-flow__controls-button {
-  background: #12121a !important;
-  border-color: #2a2a3a !important;
-  fill: #9ca3af !important;
+  background: rgb(var(--deck-surface)) !important;
+  border-color: rgb(var(--deck-border)) !important;
+  fill: rgb(var(--deck-text-dim)) !important;
 }
 
 .react-flow__controls-button:hover {
-  background: #1a1a25 !important;
-  fill: #e5e7eb !important;
+  background: rgb(var(--deck-surface-2)) !important;
+  fill: rgb(var(--deck-text-bright)) !important;
 }
 
 /* Selection box */
 .react-flow__selection {
-  background: rgba(99, 102, 241, 0.1) !important;
-  border: 1px solid rgba(99, 102, 241, 0.4) !important;
+  background: rgb(var(--deck-accent) / 0.1) !important;
+  border: 1px solid rgb(var(--deck-accent) / 0.4) !important;
 }
 
 /* Minimap */
 .react-flow__minimap {
-  background: #12121a !important;
-  border: 1px solid #2a2a3a !important;
+  background: rgb(var(--deck-surface)) !important;
+  border: 1px solid rgb(var(--deck-border)) !important;
   border-radius: 8px !important;
 }
 

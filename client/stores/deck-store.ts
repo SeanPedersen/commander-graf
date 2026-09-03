@@ -3,7 +3,8 @@ import { create } from "zustand";
 // ─── Types ─────────────────────────────────────────
 
 export type Page = "home" | "command-center" | "history" | "settings";
-export type CommandCenterMode = "empty" | "planning" | "running" | "completed" | "finalizing";
+export type Theme = "dark" | "light";
+export type CommandCenterMode = "empty" | "planning" | "reviewing" | "running" | "completed" | "finalizing";
 export type AgentStatus =
   | "pending"
   | "queued"
@@ -156,7 +157,45 @@ interface DeckStore {
   toasts: string[];
   addToast: (msg: string) => void;
   removeToast: () => void;
+
+  // Theme
+  theme: Theme;
+  toggleTheme: () => void;
 }
+
+const THEME_STORAGE_KEY = "agent-deck-theme";
+const LIGHT_QUERY = "(prefers-color-scheme: light)";
+
+/** Only an explicit user choice is stored; anything else means "follow the OS". */
+function readStoredTheme(): Theme | null {
+  try {
+    const raw = localStorage.getItem(THEME_STORAGE_KEY);
+    return raw === "dark" || raw === "light" ? raw : null;
+  } catch {
+    return null; // storage blocked (private mode / cookies disabled)
+  }
+}
+
+function osTheme(): Theme {
+  return window.matchMedia?.(LIGHT_QUERY).matches ? "light" : "dark";
+}
+
+/** Mirrors the pre-paint bootstrap in client/index.html — keep the two in sync. */
+function applyTheme(theme: Theme) {
+  document.documentElement.dataset.theme = theme;
+  document.documentElement.style.colorScheme = theme;
+}
+
+function persistTheme(theme: Theme) {
+  try {
+    localStorage.setItem(THEME_STORAGE_KEY, theme);
+  } catch {
+    // Non-fatal: the theme still applies for the rest of this session.
+  }
+}
+
+const initialTheme: Theme = readStoredTheme() ?? osTheme();
+applyTheme(initialTheme);
 
 export const useDeckStore = create<DeckStore>((set) => ({
   // Navigation
@@ -260,4 +299,22 @@ export const useDeckStore = create<DeckStore>((set) => ({
   toasts: [],
   addToast: (msg) => set((state) => ({ toasts: [...state.toasts, msg] })),
   removeToast: () => set((state) => ({ toasts: state.toasts.slice(0, -1) })),
+
+  // Theme
+  theme: initialTheme,
+  toggleTheme: () =>
+    set((state) => {
+      const theme: Theme = state.theme === "dark" ? "light" : "dark";
+      applyTheme(theme);
+      persistTheme(theme);
+      return { theme };
+    }),
 }));
+
+// Track the OS preference until the user makes an explicit choice.
+window.matchMedia?.(LIGHT_QUERY).addEventListener("change", (e) => {
+  if (readStoredTheme()) return;
+  const theme: Theme = e.matches ? "light" : "dark";
+  applyTheme(theme);
+  useDeckStore.setState({ theme });
+});

@@ -1,7 +1,25 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      // Pre-paint theme bootstrap: avoids a dark flash before the app mounts.
+      // Mirrors applyTheme() in client/stores/deck-store.ts.
+      (function () {
+        var stored = null;
+        try {
+          stored = localStorage.getItem("agent-deck-theme");
+        } catch (e) {}
+        var theme =
+          stored === "light" || stored === "dark"
+            ? stored
+            : window.matchMedia("(prefers-color-scheme: light)").matches
+              ? "light"
+              : "dark";
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.style.colorScheme = theme;
+      })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Agent Deck</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />

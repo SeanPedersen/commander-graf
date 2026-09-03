@@ -10,7 +10,7 @@ interface TopBarProps {
 }
 
 export function TopBar({ project, activeWorkspace }: TopBarProps) {
-  const { mode, agents, activeWorkflow, page, goHome } = useDeckStore();
+  const { mode, agents, activeWorkflow, page, goHome, theme, toggleTheme } = useDeckStore();
 
   const activeCount = agents.filter(
     (a) => a.status === "running" || a.status === "idle"
@@ -30,6 +30,13 @@ export function TopBar({ project, activeWorkspace }: TopBarProps) {
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
             </svg>
             <span className="text-xs font-medium">Planning...</span>
+          </div>
+        );
+      case "reviewing":
+        return (
+          <div className="flex items-center gap-2 text-deck-accent">
+            <StatusDot status="pending" />
+            <span className="text-xs font-medium">Ready to launch</span>
           </div>
         );
       case "running":
@@ -103,17 +110,35 @@ export function TopBar({ project, activeWorkspace }: TopBarProps) {
       {/* Center: mode status */}
       <div className="absolute left-1/2 -translate-x-1/2">{modeLabel}</div>
 
-      {/* Right: cost + agent count (only when workspace is active) */}
-      {activeWorkspace && (
-        <div className="flex items-center gap-3 text-xs text-deck-text-dim shrink-0" style={{ WebkitAppRegion: "no-drag" } as any}>
-          <span className="font-mono text-deck-success">
-            ${totalCost.toFixed(2)}
-          </span>
-          <span>
-            {activeCount}/{agents.length} agents
-          </span>
-        </div>
-      )}
+      {/* Right: cost + agent count + theme toggle */}
+      <div className="flex items-center gap-3 shrink-0" style={{ WebkitAppRegion: "no-drag" } as any}>
+        {activeWorkspace && (
+          <div className="flex items-center gap-3 text-xs text-deck-text-dim">
+            <span className="font-mono text-deck-success">
+              ${totalCost.toFixed(2)}
+            </span>
+            <span>
+              {activeCount}/{agents.length} agents
+            </span>
+          </div>
+        )}
+        <button
+          onClick={toggleTheme}
+          className="text-deck-text-dim hover:text-deck-text-bright hover:bg-deck-surface-2 focus:outline-none focus:ring-1 focus:ring-deck-accent rounded p-1 transition-colors"
+          aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+          title={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+        >
+          {theme === "dark" ? (
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+          ) : (
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+            </svg>
+          )}
+        </button>
+      </div>
     </div>
   );
 }
