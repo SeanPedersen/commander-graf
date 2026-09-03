@@ -4,37 +4,32 @@
  */
 
 import type { Agent, NodeState } from "../../stores/deck-store";
+import type { PlannedAgent } from "./PlanningCanvas";
 
 interface ConfigTabProps {
   agent?: Agent | null;
   workflowNode?: NodeState | null;
+  plannedAgent?: PlannedAgent | null;
+  onUpdatePlannedAgent?: (patch: Partial<PlannedAgent>) => void;
 }
 
-export function ConfigTab({ agent, workflowNode }: ConfigTabProps) {
+export function ConfigTab({
+  agent,
+  workflowNode,
+  plannedAgent,
+  onUpdatePlannedAgent,
+}: ConfigTabProps) {
   const config = workflowNode?.config || {};
-  const model = agent?.model || config.model || "sonnet";
-  const runtime = agent?.runtime || config.runtime || "claude-code";
-  const prompt = agent?.prompt || config.prompt || config.task || "";
-  const workdir = config.workdir || ".";
+  const model = agent?.model || config.model || plannedAgent?.model || "sonnet";
+  const runtime = agent?.runtime || config.runtime || plannedAgent?.runtime || "claude-code";
+  const prompt = agent?.prompt || config.prompt || config.task || plannedAgent?.task || "";
+  const workdir = config.workdir || plannedAgent?.workdir || ".";
+
+  // Pre-launch: no live agent/workflow node yet, so the plan is still editable.
+  const editable = !agent && !workflowNode && !!plannedAgent && !!onUpdatePlannedAgent;
 
   return (
     <div className="h-full overflow-y-auto p-4 space-y-4">
-      {/* Model */}
-      <div>
-        <label className="text-[10px] uppercase text-deck-muted block mb-1">
-          Model
-        </label>
-        <select
-          value={model}
-          disabled
-          className="w-full text-xs px-3 py-2 bg-deck-surface-2 border border-deck-border rounded text-deck-text focus:outline-none"
-        >
-          <option value="haiku">Haiku 4.5</option>
-          <option value="sonnet">Sonnet 4.6</option>
-          <option value="opus">Opus 4.6</option>
-        </select>
-      </div>
-
       {/* Runtime */}
       <div>
         <label className="text-[10px] uppercase text-deck-muted block mb-1">
@@ -42,13 +37,31 @@ export function ConfigTab({ agent, workflowNode }: ConfigTabProps) {
         </label>
         <select
           value={runtime}
-          disabled
-          className="w-full text-xs px-3 py-2 bg-deck-surface-2 border border-deck-border rounded text-deck-text focus:outline-none"
+          disabled={!editable}
+          onChange={(e) => onUpdatePlannedAgent?.({ runtime: e.target.value })}
+          className={`w-full text-xs px-3 py-2 bg-deck-surface-2 border border-deck-border rounded text-deck-text focus:outline-none ${editable ? "cursor-pointer focus:border-deck-accent" : ""}`}
         >
           <option value="claude-code">Claude Code</option>
           <option value="codex">Codex</option>
           <option value="gemini-cli">Gemini CLI</option>
           <option value="litellm">LiteLLM Proxy</option>
+        </select>
+      </div>
+
+      {/* Model */}
+      <div>
+        <label className="text-[10px] uppercase text-deck-muted block mb-1">
+          Model
+        </label>
+        <select
+          value={model}
+          disabled={!editable}
+          onChange={(e) => onUpdatePlannedAgent?.({ model: e.target.value })}
+          className={`w-full text-xs px-3 py-2 bg-deck-surface-2 border border-deck-border rounded text-deck-text focus:outline-none ${editable ? "cursor-pointer focus:border-deck-accent" : ""}`}
+        >
+          <option value="haiku">Haiku 4.5</option>
+          <option value="sonnet">Sonnet 4.6</option>
+          <option value="opus">Opus 4.6</option>
         </select>
       </div>
 
@@ -73,7 +86,7 @@ export function ConfigTab({ agent, workflowNode }: ConfigTabProps) {
         <textarea
           value={prompt}
           readOnly
-          rows={8}
+          rows={16}
           className="w-full text-xs px-3 py-2 bg-deck-surface-2 border border-deck-border rounded text-deck-text resize-none focus:outline-none font-mono"
         />
       </div>

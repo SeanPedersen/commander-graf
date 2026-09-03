@@ -10,7 +10,6 @@ import type { WorkflowExecutor } from "../deck/workflow-executor.js";
 import type { WorkspaceManager } from "../core/workspace-manager.js";
 import { DeckStore } from "../core/db.js";
 import { scanProject } from "../deck/project-scanner.js";
-import { planMission } from "../deck/architect.js";
 
 // Sub-routers
 import { createProjectRouter } from "./project.js";
@@ -312,25 +311,6 @@ export function createDeckRouter(
     }
   });
 
-  // === Mission Planner (legacy path) ===
-
-  /** Plan a mission (AI task decomposition) */
-  router.post("/mission/plan", async (req, res) => {
-    try {
-      const { task, path: projectPath } = req.body;
-      if (!task) {
-        return res.status(400).json({ error: "task is required" });
-      }
-
-      const scanPath = projectPath || process.cwd();
-      const structure = await scanProject(scanPath);
-      const plan = await planMission(task, structure);
-      res.json({ plan, project: structure });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
   // === Workflows (legacy paths) ===
 
   /** Launch a workflow from a MissionPlan */
@@ -339,7 +319,7 @@ export function createDeckRouter(
       if (!workflowExecutor) {
         return res.status(500).json({ error: "Workflow executor not initialized" });
       }
-      const { plan, name, projectRoot, workspaceId } = req.body;
+      const { plan, name, projectRoot, workspaceId, planId } = req.body;
       if (!plan || !plan.agents) {
         return res.status(400).json({ error: "plan with agents is required" });
       }
@@ -356,6 +336,15 @@ export function createDeckRouter(
         root,
         workspaceId
       );
+
+      // The plan is now a real running workflow — drop the pending-plan row.
+      if (planId) {
+        try {
+          const pending = store.getWorkflow(planId);
+          if (pending && pending.status === "planning") store.deleteWorkflow(planId);
+        } catch {}
+      }
+
       res.status(201).json(workflow);
     } catch (error: any) {
       res.status(500).json({ error: error.message });

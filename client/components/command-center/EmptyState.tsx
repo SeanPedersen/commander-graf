@@ -1,4 +1,5 @@
 import type { ProjectStructure } from "../../hooks/use-project";
+import type { PendingPlan } from "../../pages/CommandCenter";
 
 interface EmptyStateProps {
   project: ProjectStructure | null;
@@ -6,6 +7,9 @@ interface EmptyStateProps {
   task: string;
   setTask: (task: string) => void;
   onPlan: () => void;
+  pendingPlan: PendingPlan | null;
+  onResumePlan: () => void;
+  onDiscardPlan: () => void;
 }
 
 function InfoCard({ label, value }: { label: string; value: string | number }) {
@@ -23,6 +27,9 @@ export function EmptyState({
   task,
   setTask,
   onPlan,
+  pendingPlan,
+  onResumePlan,
+  onDiscardPlan,
 }: EmptyStateProps) {
   return (
     <div className="flex flex-col items-center justify-center h-full px-8">
@@ -33,6 +40,39 @@ export function EmptyState({
           <InfoCard label="Type" value={project.framework || project.type} />
           <InfoCard label="Agents" value={project.agentCount} />
           <InfoCard label="MCP Servers" value={project.mcpServerCount} />
+        </div>
+      )}
+
+      {/* Existing plans (not yet launched) */}
+      {pendingPlan && (
+        <div className="w-full max-w-xl mb-8">
+          <div className="text-[10px] uppercase text-deck-muted mb-2">
+            Existing Plans
+          </div>
+          <div className="bg-deck-surface rounded-lg border border-deck-border p-3 flex items-center gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs text-deck-text-bright truncate">
+                {pendingPlan.task}
+              </p>
+              <p className="text-[10px] text-deck-text-dim mt-0.5">
+                {pendingPlan.plan.agents.length} agents · Est. $
+                {pendingPlan.plan.estimatedCost.toFixed(2)} · ~
+                {pendingPlan.plan.estimatedTimeMinutes}min
+              </p>
+            </div>
+            <button
+              onClick={onDiscardPlan}
+              className="px-2.5 py-1.5 text-xs text-deck-text-dim hover:text-deck-error transition-colors"
+            >
+              Discard
+            </button>
+            <button
+              onClick={onResumePlan}
+              className="px-3 py-1.5 text-xs bg-deck-accent text-white rounded-lg hover:bg-deck-accent-hover transition-colors font-medium"
+            >
+              Resume
+            </button>
+          </div>
         </div>
       )}
 

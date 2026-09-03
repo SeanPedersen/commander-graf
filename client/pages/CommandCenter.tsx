@@ -6,13 +6,14 @@
  *   completed -> Summary with cost/time + new mission option
  */
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useDeckStore } from "../stores/deck-store";
 import type { ProjectStructure } from "../hooks/use-project";
 import { EmptyState } from "../components/command-center/EmptyState";
 import {
   PlanningCanvas,
   type MissionPlan,
+  type PlannedAgent,
 } from "../components/command-center/PlanningCanvas";
 import { RunningCanvas } from "../components/command-center/RunningCanvas";
 import { RightPanel } from "../components/command-center/RightPanel";
@@ -21,6 +22,16 @@ import { CompletedSummary } from "../components/command-center/CompletedSummary"
 import { FinalizePanel } from "../components/command-center/FinalizePanel";
 
 const API_BASE = "/api/deck";
+
+// Stand-in node id/name shown as a single running node on the DAG canvas
+// while the architect is still investigating and drafting the real plan.
+const ARCHITECT_NODE = "architect";
+
+export interface PendingPlan {
+  planId: string;
+  plan: MissionPlan;
+  task: string;
+}
 
 interface CommandCenterProps {
   sendJsonMessage: (msg: any) => void;
@@ -44,22 +55,110 @@ export function CommandCenter({
     clearOutputEvents,
     addToast,
     activeWorkspaceId,
+    outputEvents,
   } = useDeckStore();
 
   const [task, setTask] = useState("");
   const [plan, setPlan] = useState<MissionPlan | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [planId, setPlanId] = useState<string | null>(null);
+  const [pendingPlan, setPendingPlan] = useState<PendingPlan | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // The server emits the architect's actual full prompt as the first live
+  // event (see server/deck/architect.ts) — until it arrives, fall back to a
+  // short placeholder so the node/Config tab always show something sensible.
+  const architectPromptText = useMemo(() => {
+    const events = planId ? outputEvents[planId] : undefined;
+    const promptEvent = events?.find((e) => e.type === "prompt");
+    if (promptEvent?.data?.content) return promptEvent.data.content as string;
+    return task
+      ? `Investigating the codebase to plan: "${task}"`
+      : "Investigating the codebase…";
+  }, [outputEvents, planId, task]);
+
+  // Single-node placeholder DAG shown while the architect is running — once
+  // the real plan lands we swap straight to the full multi-agent graph, with
+  // this node kept around (marked done) as the graph's root.
+  const architectPlan: MissionPlan = useMemo(
+    () => ({
+      agents: [
+        {
+          name: ARCHITECT_NODE,
+          task: architectPromptText,
+          role: "architect",
+          workdir: ".",
+          model: "sonnet",
+          runtime: "claude-code",
+          dependsOn: [],
+        },
+      ],
+      estimatedCost: 0,
+      estimatedTimeMinutes: 0,
+    }),
+    [architectPromptText]
+  );
+
+  // ─── Look up a saved (not-yet-launched) plan on load / workspace switch ──
+  // Surfaced in the project view (EmptyState) so it isn't silently lost or
+  // silently auto-resumed — the user picks whether to continue or discard it.
+
+  useEffect(() => {
+    setPendingPlan(null);
+    if (!activeWorkspaceId) return;
+    let cancelled = false;
+
+    fetch(`${API_BASE}/mission/plan/pending?workspaceId=${activeWorkspaceId}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (cancelled || !data?.plan) return;
+        setPendingPlan({ planId: data.planId, plan: data.plan, task: data.task || "" });
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeWorkspaceId]);
 
   // ─── Actions ──────────────────────────────────────
 
+  function handleResumePlan() {
+    if (!pendingPlan) return;
+    setPlan(pendingPlan.plan);
+    setPlanId(pendingPlan.planId);
+    setTask(pendingPlan.task);
+    setPendingPlan(null);
+    setMode("reviewing");
+  }
+
+  async function handleDiscardPlan() {
+    if (!pendingPlan) return;
+    const id = pendingPlan.planId;
+    setPendingPlan(null);
+    try {
+      await fetch(`${API_BASE}/mission/plan/${id}`, { method: "DELETE" });
+    } catch {
+      // ignore
+    }
+  }
+
   async function handlePlan() {
     if (!task.trim()) return;
-    setError(null);
     setPlan(null);
+    setPendingPlan(null);
     setActiveWorkflow(null);
     clearOutputEvents();
     setMode("planning");
+
+    // Generate the plan id up front so we can subscribe to the architect's
+    // live output (over the existing agent-focus WS channel) before the
+    // planning request even reaches the server.
+    const newPlanId = crypto.randomUUID();
+    setPlanId(newPlanId);
+    sendJsonMessage({ type: "deck:agent:focus", agentId: newPlanId });
+    // Auto-select the stand-in architect node so its live output is visible
+    // immediately, same as clicking any other running node would show.
+    setSelectedAgentId(ARCHITECT_NODE);
 
     try {
       const res = await fetch(`${API_BASE}/mission/plan`, {
@@ -69,6 +168,7 @@ export function CommandCenter({
           task,
           path: project?.root || ".",
           workspaceId: activeWorkspaceId || undefined,
+          planId: newPlanId,
         }),
       });
       if (!res.ok) {
@@ -79,17 +179,20 @@ export function CommandCenter({
       }
       const data = await res.json();
       setPlan(data.plan);
-      // Stay in planning mode (shows PlanningCanvas for review)
+      setPlanId(data.planId || newPlanId);
+      setSelectedAgentId(null);
+      setMode("reviewing");
     } catch (err: any) {
-      setError(`Planning failed: ${err.message}`);
       addToast(`Planning failed: ${err.message}`);
+      setSelectedAgentId(null);
       setMode("empty");
+    } finally {
+      sendJsonMessage({ type: "deck:agent:unfocus", agentId: newPlanId });
     }
   }
 
   async function handleLaunch() {
     if (!plan) return;
-    setError(null);
 
     try {
       sendJsonMessage({ type: "deck:subscribe" });
@@ -102,6 +205,7 @@ export function CommandCenter({
           name: task.slice(0, 50),
           projectRoot: project?.root || ".",
           workspaceId: activeWorkspaceId || undefined,
+          planId: planId || undefined,
         }),
       });
       if (!res.ok) {
@@ -112,6 +216,7 @@ export function CommandCenter({
       }
       const wf = await res.json();
       setActiveWorkflow(wf);
+      setPlanId(null);
       setMode("running");
 
       // Focus all agents for output streaming
@@ -121,7 +226,6 @@ export function CommandCenter({
         }
       }
     } catch (err: any) {
-      setError(`Launch failed: ${err.message}`);
       addToast(`Launch failed: ${err.message}`);
     }
   }
@@ -137,12 +241,15 @@ export function CommandCenter({
   }
 
   function handleReset() {
+    if (planId) {
+      fetch(`${API_BASE}/mission/plan/${planId}`, { method: "DELETE" }).catch(() => {});
+    }
     setPlan(null);
+    setPlanId(null);
     setActiveWorkflow(null);
     clearOutputEvents();
     setMode("empty");
     setTask("");
-    setError(null);
     setSelectedAgentId(null);
     inputRef.current?.focus();
   }
@@ -151,58 +258,78 @@ export function CommandCenter({
     setSelectedAgentId(name);
   }
 
+  function handleUpdatePlannedAgent(patch: Partial<PlannedAgent>) {
+    setPlan((prev) => {
+      if (!prev || !selectedAgentId) return prev;
+      return {
+        ...prev,
+        agents: prev.agents.map((a) =>
+          a.name === selectedAgentId ? { ...a, ...patch } : a
+        ),
+      };
+    });
+  }
+
   // ─── Render ───────────────────────────────────────
 
-  // Planning mode: show spinner if no plan yet, or PlanningCanvas if plan ready
-  if (mode === "planning") {
-    if (plan) {
-      return (
-        <div className="flex h-full">
-          <div className="flex-1 flex flex-col overflow-hidden">
-            <PlanningCanvas
-              plan={plan}
-              onLaunch={handleLaunch}
-              onReplan={handlePlan}
-              onSelectNode={handleSelectNode}
-            />
-          </div>
-          {selectedAgentId && <RightPanel sendJsonMessage={sendJsonMessage} />}
-        </div>
-      );
-    }
-
-    // Spinner while waiting for plan
+  // Reviewing mode: plan is ready, show PlanningCanvas for review before launch.
+  // The architect stays visible as a finished node feeding the real plan's
+  // root agents, instead of disappearing once it's done.
+  if (mode === "reviewing" && plan) {
+    const architectSelected = selectedAgentId === ARCHITECT_NODE;
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="flex flex-col items-center gap-3">
-          <svg
-            className="animate-spin h-8 w-8 text-deck-accent"
-            viewBox="0 0 24 24"
-          >
-            <circle
-              className="opacity-25"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              strokeWidth="4"
-              fill="none"
-            />
-            <path
-              className="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-            />
-          </svg>
-          <p className="text-sm text-deck-text-dim">
-            Architect is planning your mission...
-          </p>
-          {error && (
-            <p className="text-xs text-deck-error bg-deck-error/10 px-3 py-1.5 rounded">
-              {error}
-            </p>
-          )}
+      <div className="flex h-full">
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <PlanningCanvas
+            plan={plan}
+            extraNode={{ agent: architectPlan.agents[0], status: "success" }}
+            onLaunch={handleLaunch}
+            onReplan={handlePlan}
+            onSelectNode={handleSelectNode}
+          />
         </div>
+        {selectedAgentId && (
+          <RightPanel
+            sendJsonMessage={sendJsonMessage}
+            plannedAgent={
+              architectSelected
+                ? architectPlan.agents[0]
+                : plan.agents.find((a) => a.name === selectedAgentId) || null
+            }
+            onUpdatePlannedAgent={
+              architectSelected ? undefined : handleUpdatePlannedAgent
+            }
+            liveAgentId={architectSelected ? planId : undefined}
+            liveAgentStatus={architectSelected ? "success" : undefined}
+          />
+        )}
+      </div>
+    );
+  }
+
+  // Planning mode: same DAG canvas as reviewing, but with a single running
+  // "architect" node — clicking it shows its live output. Once the real plan
+  // lands, this swaps straight to the full multi-agent graph (mode flips to
+  // "reviewing"), so the two screens read as one continuous view.
+  if (mode === "planning") {
+    return (
+      <div className="flex h-full">
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <PlanningCanvas
+            plan={architectPlan}
+            isPlanning
+            onLaunch={() => {}}
+            onReplan={() => {}}
+            onSelectNode={handleSelectNode}
+          />
+        </div>
+        {selectedAgentId && (
+          <RightPanel
+            sendJsonMessage={sendJsonMessage}
+            plannedAgent={architectPlan.agents[0]}
+            liveAgentId={planId}
+          />
+        )}
       </div>
     );
   }
@@ -268,6 +395,9 @@ export function CommandCenter({
       task={task}
       setTask={setTask}
       onPlan={handlePlan}
+      pendingPlan={pendingPlan}
+      onResumePlan={handleResumePlan}
+      onDiscardPlan={handleDiscardPlan}
     />
   );
 }

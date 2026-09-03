@@ -9,17 +9,37 @@ import { StatusDot } from "../shared/StatusDot";
 import { ConfigTab } from "./ConfigTab";
 import { LiveTab } from "./LiveTab";
 import { OutputTab } from "./OutputTab";
+import type { PlannedAgent } from "./PlanningCanvas";
 
 type Tab = "config" | "live" | "output";
 
 interface RightPanelProps {
   sendJsonMessage: (msg: any) => void;
+  plannedAgent?: PlannedAgent | null;
+  onUpdatePlannedAgent?: (patch: Partial<PlannedAgent>) => void;
+  /** Overrides the Live/Output target — used for the architect agent, which has
+   *  no `Agent`/`NodeState` record of its own, just a live stream keyed by planId. */
+  liveAgentId?: string | null;
+  /** Status to show in the header when liveAgentId drives the display (e.g. the
+   *  architect is "running" while planning, "success" once the plan lands). */
+  liveAgentStatus?: string;
 }
 
-export function RightPanel({ sendJsonMessage }: RightPanelProps) {
+export function RightPanel({
+  sendJsonMessage,
+  plannedAgent,
+  onUpdatePlannedAgent,
+  liveAgentId,
+  liveAgentStatus,
+}: RightPanelProps) {
   const { selectedAgentId, agents, activeWorkflow, contextUsage } =
     useDeckStore();
-  const [activeTab, setActiveTab] = useState<Tab>("live");
+  // Pre-launch (plannedAgent set, no live agent yet): Live/Output have nothing
+  // to show, so default to Config instead — unless a live stream is already
+  // running (the architect), in which case that's the interesting tab.
+  const [activeTab, setActiveTab] = useState<Tab>(
+    liveAgentId ? "live" : plannedAgent ? "config" : "live"
+  );
 
   if (!selectedAgentId) return null;
 
@@ -30,12 +50,17 @@ export function RightPanel({ sendJsonMessage }: RightPanelProps) {
         (n) => n.agentName === selectedAgentId || n.agentId === selectedAgentId
       )
     : null;
+  const resolvedLiveId = agent?.id || workflowNode?.agentId || liveAgentId || null;
 
   const displayName =
-    agent?.name || workflowNode?.agentName || selectedAgentId;
+    agent?.name || workflowNode?.agentName || plannedAgent?.name || selectedAgentId;
   const displayStatus =
-    agent?.status || workflowNode?.status || "pending";
-  const displayModel = agent?.model || workflowNode?.config?.model || "sonnet";
+    agent?.status ||
+    workflowNode?.status ||
+    liveAgentStatus ||
+    (liveAgentId ? "running" : "pending");
+  const displayModel =
+    agent?.model || workflowNode?.config?.model || plannedAgent?.model || "sonnet";
   const ctx = agent ? contextUsage[agent.id] : undefined;
 
   const tabs: { key: Tab; label: string }[] = [
@@ -90,19 +115,14 @@ export function RightPanel({ sendJsonMessage }: RightPanelProps) {
           <ConfigTab
             agent={agent}
             workflowNode={workflowNode}
+            plannedAgent={plannedAgent}
+            onUpdatePlannedAgent={onUpdatePlannedAgent}
           />
         )}
         {activeTab === "live" && (
-          <LiveTab
-            agentId={agent?.id || workflowNode?.agentId || null}
-            sendJsonMessage={sendJsonMessage}
-          />
+          <LiveTab agentId={resolvedLiveId} sendJsonMessage={sendJsonMessage} />
         )}
-        {activeTab === "output" && (
-          <OutputTab
-            agentId={agent?.id || workflowNode?.agentId || null}
-          />
-        )}
+        {activeTab === "output" && <OutputTab agentId={resolvedLiveId} />}
       </div>
 
       {/* Context bar */}
