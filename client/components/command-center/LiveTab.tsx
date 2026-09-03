@@ -82,7 +82,7 @@ function LiveEventLine({ event }: { event: StreamEvent }) {
       );
     case "thinking":
       return (
-        <pre className="text-purple-400/60 italic whitespace-pre-wrap break-words leading-relaxed pl-2 border-l border-purple-800/30">
+        <pre className="text-deck-thinking/70 italic whitespace-pre-wrap break-words leading-relaxed pl-2 border-l border-deck-thinking/30">
           {event.data?.content || ""}
         </pre>
       );
@@ -92,12 +92,14 @@ function LiveEventLine({ event }: { event: StreamEvent }) {
           ?.replace(/^mcp__[^_]+__/, "")
           .replace(/_/g, " ") || "unknown";
       return (
-        <div className="text-blue-400 py-0.5 flex items-center gap-1.5">
-          <span className="text-[10px] text-blue-500/60">{">"}</span>
+        <div className="text-deck-info py-0.5 flex items-center gap-1.5">
+          <span className="text-[10px] text-deck-info/60">{">"}</span>
           <span>{toolName}</span>
         </div>
       );
     }
+    case "tool_result":
+      return <ToolResultLine event={event} />;
     case "error":
       return (
         <div className="text-deck-error py-0.5">
@@ -120,4 +122,43 @@ function LiveEventLine({ event }: { event: StreamEvent }) {
     default:
       return null;
   }
+}
+
+function ToolResultLine({ event }: { event: StreamEvent }) {
+  const [expanded, setExpanded] = useState(false);
+  const content: string = event.data?.content || "";
+  const isError = !!event.data?.isError;
+  const lines = content.split("\n");
+  const truncated =
+    content.length > 2000 ? content.slice(0, 2000) + "\n… (truncated)" : content;
+
+  return (
+    <div
+      className={`pl-3 border-l ml-1 mb-1 ${
+        isError ? "border-deck-error/30" : "border-deck-border"
+      }`}
+    >
+      <button
+        onClick={() => setExpanded((e) => !e)}
+        className={`flex items-center gap-1.5 w-full text-left min-w-0 ${
+          isError ? "text-deck-error" : "text-deck-text-dim"
+        }`}
+      >
+        <span className="text-[10px] shrink-0 opacity-60">
+          {expanded ? "▼" : "▶"}
+        </span>
+        {!expanded && (
+          <span className="truncate opacity-70">
+            {lines[0] || "(no output)"}
+            {lines.length > 1 && ` … (+${lines.length - 1} more lines)`}
+          </span>
+        )}
+      </button>
+      {expanded && (
+        <pre className="whitespace-pre-wrap break-words leading-relaxed mt-0.5">
+          {truncated || "(no output)"}
+        </pre>
+      )}
+    </div>
+  );
 }

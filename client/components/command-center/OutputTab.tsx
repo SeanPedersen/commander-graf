@@ -56,13 +56,13 @@ function OutputEventBlock({ event }: { event: StreamEvent }) {
         <div>
           <button
             onClick={() => setExpanded(!expanded)}
-            className="flex items-center gap-1 text-[10px] text-purple-400 hover:text-purple-300"
+            className="flex items-center gap-1 text-[10px] text-deck-thinking hover:text-deck-thinking/80"
           >
             <span>{expanded ? "\u25BC" : "\u25B6"}</span>
             <span className="italic">thinking</span>
           </button>
           {expanded && (
-            <pre className="text-xs text-purple-300/60 italic whitespace-pre-wrap break-words font-mono pl-3 border-l border-purple-800/30 mt-0.5">
+            <pre className="text-xs text-deck-thinking/70 italic whitespace-pre-wrap break-words font-mono pl-3 border-l border-deck-thinking/30 mt-0.5">
               {event.data?.content || ""}
             </pre>
           )}
@@ -75,15 +75,15 @@ function OutputEventBlock({ event }: { event: StreamEvent }) {
           ?.replace(/^mcp__[^_]+__/, "")
           .replace(/_/g, " ") || "unknown";
       return (
-        <div className="bg-deck-surface-2/50 border-l-2 border-blue-600/40 px-3 py-1.5 rounded-r">
+        <div className="bg-deck-surface-2/50 border-l-2 border-deck-info/40 px-3 py-1.5 rounded-r">
           <button
             onClick={() => setExpanded(!expanded)}
             className="flex items-center gap-1.5 w-full text-left"
           >
-            <span className="text-[10px] text-blue-400">
+            <span className="text-[10px] text-deck-info">
               {expanded ? "\u25BC" : "\u25B6"}
             </span>
-            <span className="text-[10px] font-medium text-blue-300">
+            <span className="text-[10px] font-medium text-deck-info">
               {toolName}
             </span>
             <span className="text-[10px] text-deck-muted ml-auto">
@@ -97,6 +97,44 @@ function OutputEventBlock({ event }: { event: StreamEvent }) {
                 : JSON.stringify(event.data.toolInput, null, 2)}
             </pre>
           )}
+        </div>
+      );
+    }
+
+    case "tool_result": {
+      const content: string = event.data?.content || "";
+      const isError = !!event.data?.isError;
+      const preview = content.split("\n").slice(0, 2).join("\n");
+      return (
+        <div
+          className={`border-l-2 px-3 py-1.5 rounded-r ${
+            isError
+              ? "bg-deck-error/10 border-deck-error/60"
+              : "bg-deck-surface-2/30 border-deck-border"
+          }`}
+        >
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="flex items-center gap-1.5 w-full text-left"
+          >
+            <span
+              className={`text-[10px] ${isError ? "text-deck-error" : "text-deck-muted"}`}
+            >
+              {expanded ? "▼" : "▶"}
+            </span>
+            <span
+              className={`text-[10px] font-medium ${isError ? "text-deck-error" : "text-deck-muted"}`}
+            >
+              {isError ? "result (error)" : "result"}
+            </span>
+          </button>
+          <pre
+            className={`text-[11px] font-mono mt-1 pl-4 whitespace-pre-wrap break-words max-h-64 overflow-y-auto ${
+              isError ? "text-deck-error/80" : "text-deck-text-dim"
+            }`}
+          >
+            {expanded ? content || "(no output)" : preview}
+          </pre>
         </div>
       );
     }
