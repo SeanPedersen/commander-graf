@@ -1,8 +1,7 @@
 /**
  * Architect Agent - AI-powered task decomposition.
  *
- * Takes a task description + ProjectStructure → calls Claude CLI → returns MissionPlan.
- * Uses `claude --print` so no API key needed — leverages user's existing Claude auth.
+ * Takes a task description + ProjectStructure → calls the configured CLI → returns MissionPlan.
  */
 
 import { spawn, execSync } from "child_process";
@@ -10,6 +9,7 @@ import os from "os";
 import path from "path";
 import fs from "fs";
 import { StreamParser } from "./stream-parser.js";
+import { CodexStreamParser } from "./adapters/codex-stream-parser.js";
 import type {
   ProjectStructure,
   MissionPlan,
@@ -17,7 +17,9 @@ import type {
   StreamEvent,
   PromptEvent,
 } from "./types.js";
-import type { RuntimeType } from "../core/types.js";
+import type { DeckSettings, RuntimeType } from "../core/types.js";
+
+type PlannerSettings = Pick<DeckSettings, "defaultModel" | "defaultRuntime">;
 
 /** Resolve the claude binary path (same logic as ClaudeAdapter) */
 function resolveClaudePath(): string {
@@ -40,13 +42,31 @@ function resolveClaudePath(): string {
 
 const CLAUDE_BIN = resolveClaudePath();
 
+function resolveCodexPath(): string {
+  const candidates = [
+    path.join(os.homedir(), ".local", "bin", "codex"),
+    "/usr/local/bin/codex",
+  ];
+  const installed = candidates.find((candidate) => fs.existsSync(candidate));
+  if (installed) return installed;
+
+  try {
+    return execSync("which codex", { encoding: "utf8" }).trim();
+  } catch {
+    return "codex";
+  }
+}
+
+const CODEX_BIN = resolveCodexPath();
+
 /** Generate a mission plan from a task description and project structure */
 export async function planMission(
   task: string,
   project: ProjectStructure,
+  settings: PlannerSettings,
   onEvent?: (event: StreamEvent) => void
 ): Promise<MissionPlan> {
-  const prompt = buildPrompt(task, project);
+  const prompt = buildPrompt(task, project, settings);
 
   // Not part of the CLI's own stream — the UI wants to show what the
   // architect was actually asked, same as any other agent's Config tab.
@@ -57,22 +77,19 @@ export async function planMission(
     data: { content: prompt },
   } as PromptEvent);
 
-  const resultText = await callClaude(prompt, project.root, onEvent);
+  const resultText = await callPlanner(prompt, project.root, settings, onEvent);
 
-  return parsePlan(resultText, project);
+  return parsePlan(resultText, project, settings);
 }
 
-function configuredRuntime(): RuntimeType {
-  const configured = process.env.DECK_DEFAULT_RUNTIME;
-  return configured === "codex" || configured === "gemini-cli" || configured === "litellm"
-    ? configured
-    : "claude-code";
-}
-
-function buildPrompt(task: string, project: ProjectStructure): string {
-  const runtime = configuredRuntime();
+function buildPrompt(
+  task: string,
+  project: ProjectStructure,
+  settings: PlannerSettings
+): string {
+  const { defaultModel: model, defaultRuntime: runtime } = settings;
   const modelGuidance = runtime === "codex"
-    ? "Use the configured Codex default model unless a task explicitly needs a model identifier supplied by the operator."
+    ? `Use "${model}" as the model for every agent.`
     : "Use \"sonnet\" as default model. Use \"opus\" only for complex architectural decisions or critical reviews. Use \"haiku\" for simple searches, linting, or formatting tasks.";
   const projectCtx = [
     `Project: ${project.name}`,
@@ -114,7 +131,7 @@ explanation after it) with this exact schema:
       "task": "Detailed task description for the agent",
       "role": "researcher|implementer|tester|reviewer|devops",
       "workdir": ".",
-      "model": "sonnet",
+      "model": "${model}",
       "runtime": "${runtime}",
       "dependsOn": []
     }
@@ -134,9 +151,23 @@ Rules:
 - Do NOT create agents for git commit, push, or finalize operations -- those are handled separately by the system.`;
 }
 
+function callPlanner(
+  prompt: string,
+  cwd: string,
+  settings: PlannerSettings,
+  onEvent?: (event: StreamEvent) => void
+): Promise<string> {
+  if (settings.defaultRuntime === "codex") {
+    return callCodex(prompt, cwd, settings.defaultModel, onEvent);
+  }
+
+  return callClaude(prompt, cwd, settings.defaultModel, onEvent);
+}
+
 function callClaude(
   prompt: string,
   cwd: string,
+  model: string,
   onEvent?: (event: StreamEvent) => void
 ): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -150,7 +181,7 @@ function callClaude(
       "stream-json",
       "--verbose",
       "--model",
-      "sonnet",
+      model,
     ];
 
     const envPath = [
@@ -248,8 +279,85 @@ function callClaude(
   });
 }
 
-function parsePlan(text: string, project: ProjectStructure): MissionPlan {
-  const defaultRuntime = configuredRuntime();
+function callCodex(
+  prompt: string,
+  cwd: string,
+  model: string,
+  onEvent?: (event: StreamEvent) => void
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const parser = onEvent ? new CodexStreamParser("architect") : null;
+    parser?.on("event", (event: StreamEvent) => onEvent!(event));
+
+    const proc = spawn(CODEX_BIN, ["exec", "--json", "--cd", cwd, "--model", model, prompt], {
+      cwd,
+      env: process.env,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+
+    let output = "";
+
+    proc.stdout?.on("data", (data: Buffer) => {
+      const text = data.toString();
+      output += text;
+      parser?.feed(text);
+    });
+
+    proc.stderr?.on("data", () => {
+      // Codex may emit progress information to stderr.
+    });
+
+    proc.on("error", (error) => {
+      reject(new Error(`Failed to spawn Codex CLI: ${error.message}`));
+    });
+
+    proc.on("exit", (code) => {
+      clearTimeout(timeout);
+      parser?.flush();
+
+      const resultText = extractCodexResult(output);
+      if (code === 0 && resultText) {
+        resolve(resultText);
+        return;
+      }
+
+      reject(new Error(`Codex CLI exited with code ${code}`));
+    });
+
+    const timeout = setTimeout(() => {
+      proc.kill("SIGKILL");
+      reject(new Error("Codex CLI timed out after 180s"));
+    }, 180000);
+  });
+}
+
+function extractCodexResult(output: string): string | null {
+  const events = output.split("\n").filter((line) => line.trim());
+  let resultText: string | null = null;
+
+  for (const line of events) {
+    try {
+      const event = JSON.parse(line) as {
+        type?: string;
+        item?: { type?: string; text?: string };
+      };
+      if (event.type === "item.completed" && event.item?.type === "agent_message" && event.item.text) {
+        resultText = event.item.text;
+      }
+    } catch {
+      // Ignore malformed stream events and let the CLI exit status report failure.
+    }
+  }
+
+  return resultText;
+}
+
+function parsePlan(
+  text: string,
+  project: ProjectStructure,
+  settings: PlannerSettings
+): MissionPlan {
+  const { defaultModel, defaultRuntime } = settings;
   // Extract JSON from response (handle markdown code blocks)
   let jsonStr = text.trim();
   const codeBlockMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
@@ -271,10 +379,8 @@ function parsePlan(text: string, project: ProjectStructure): MissionPlan {
       task: String(a.task || ""),
       role: a.role || undefined,
       workdir: String(a.workdir || "."),
-      model: a.model ? String(a.model) : undefined,
-      runtime: a.runtime === "codex" || a.runtime === "gemini-cli" || a.runtime === "litellm"
-        ? a.runtime
-        : defaultRuntime,
+      model: defaultModel,
+      runtime: defaultRuntime,
       dependsOn: Array.isArray(a.dependsOn) ? a.dependsOn.map(String) : [],
     }));
 

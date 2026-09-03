@@ -27,6 +27,11 @@ const API_BASE = "/api/deck";
 // while the architect is still investigating and drafting the real plan.
 const ARCHITECT_NODE = "architect";
 
+interface PlannerDefaults {
+  defaultModel: string;
+  defaultRuntime: string;
+}
+
 export interface PendingPlan {
   planId: string;
   plan: MissionPlan;
@@ -60,6 +65,10 @@ export function CommandCenter({
 
   const [task, setTask] = useState("");
   const [plan, setPlan] = useState<MissionPlan | null>(null);
+  const [plannerDefaults, setPlannerDefaults] = useState<PlannerDefaults>({
+    defaultModel: "sonnet",
+    defaultRuntime: "claude-code",
+  });
   const [planId, setPlanId] = useState<string | null>(null);
   const [pendingPlan, setPendingPlan] = useState<PendingPlan | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -87,15 +96,15 @@ export function CommandCenter({
           task: architectPromptText,
           role: "architect",
           workdir: ".",
-          model: "sonnet",
-          runtime: "claude-code",
+          model: plannerDefaults.defaultModel,
+          runtime: plannerDefaults.defaultRuntime,
           dependsOn: [],
         },
       ],
       estimatedCost: 0,
       estimatedTimeMinutes: 0,
     }),
-    [architectPromptText]
+    [architectPromptText, plannerDefaults]
   );
 
   // ─── Look up a saved (not-yet-launched) plan on load / workspace switch ──
@@ -144,6 +153,17 @@ export function CommandCenter({
 
   async function handlePlan() {
     if (!task.trim()) return;
+
+    try {
+      const settingsResponse = await fetch(`${API_BASE}/settings`);
+      if (settingsResponse.ok) {
+        const settings = await settingsResponse.json() as PlannerDefaults;
+        setPlannerDefaults(settings);
+      }
+    } catch {
+      // The server still resolves the persisted settings before planning.
+    }
+
     setPlan(null);
     setPendingPlan(null);
     setActiveWorkflow(null);

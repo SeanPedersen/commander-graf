@@ -5,10 +5,18 @@
 import { Router } from "express";
 import { v4 as uuidv4 } from "uuid";
 import { scanProject } from "../core/project-scanner.js";
+import { resolveSettings } from "../core/config-resolver.js";
 import { planMission } from "../deck/architect.js";
 import type { DeckManager } from "../deck/deck-manager.js";
 import type { WorkflowExecutor } from "../deck/workflow-executor.js";
 import type { WorkspaceManager } from "../core/workspace-manager.js";
+import type { RuntimeType } from "../core/types.js";
+
+function toRuntimeType(value: string | undefined): RuntimeType | undefined {
+  return value === "claude-code" || value === "codex" || value === "gemini-cli" || value === "litellm"
+    ? value
+    : undefined;
+}
 
 export function createMissionRouter(
   deckManager: DeckManager,
@@ -44,7 +52,12 @@ export function createMissionRouter(
 
       const scanPath = resolveWorkspacePath(workspaceId, projectPath);
       const structure = await scanProject(scanPath);
-      const plan = await planMission(task, structure, (event) => {
+      const storedSettings = deckManager.getStore().getAllSettings();
+      const settings = resolveSettings(scanPath, {
+        defaultModel: storedSettings.defaultModel,
+        defaultRuntime: toRuntimeType(storedSettings.defaultRuntime),
+      });
+      const plan = await planMission(task, structure, settings, (event) => {
         deckManager.emit("agent:stream", planId, event);
       });
 

@@ -4,37 +4,13 @@
  */
 
 import { useState, useEffect } from "react";
+import {
+  getRuntimeModel,
+  MODELS_BY_RUNTIME,
+  type RuntimeType,
+} from "../models";
 
 const API_BASE = "/api/deck";
-
-type RuntimeType = "claude-code" | "codex" | "gemini-cli" | "litellm";
-
-interface ModelOption {
-  value: string;
-  label: string;
-}
-
-const MODELS_BY_RUNTIME: Record<RuntimeType, readonly ModelOption[]> = {
-  "claude-code": [
-    { value: "haiku", label: "Haiku 4.5" },
-    { value: "sonnet", label: "Sonnet 4.6" },
-    { value: "opus", label: "Opus 4.6" },
-  ],
-  codex: [
-    { value: "gpt-5.6-sol", label: "GPT-5.6 Sol" },
-    { value: "gpt-5.6-terra", label: "GPT-5.6 Terra" },
-    { value: "gpt-5.6-luna", label: "GPT-5.6 Luna" },
-  ],
-  "gemini-cli": [
-    { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
-    { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro" },
-  ],
-  litellm: [
-    { value: "haiku", label: "Haiku 4.5" },
-    { value: "sonnet", label: "Sonnet 4.6" },
-    { value: "opus", label: "Opus 4.6" },
-  ],
-};
 
 interface DeckSettings {
   maxAgents: number;
@@ -67,17 +43,10 @@ export function Settings() {
 
   const handleRuntimeChange = (runtime: RuntimeType) => {
     setSettings((currentSettings) => {
-      const nextModelOptions = MODELS_BY_RUNTIME[runtime];
-      const supportsCurrentModel = nextModelOptions.some(
-        (model) => model.value === currentSettings.defaultModel
-      );
-
       return {
         ...currentSettings,
         defaultRuntime: runtime,
-        defaultModel: supportsCurrentModel
-          ? currentSettings.defaultModel
-          : nextModelOptions[0].value,
+        defaultModel: getRuntimeModel(runtime, currentSettings.defaultModel),
       };
     });
   };

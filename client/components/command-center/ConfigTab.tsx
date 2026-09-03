@@ -5,6 +5,7 @@
 
 import type { Agent, NodeState } from "../../stores/deck-store";
 import type { PlannedAgent } from "./PlanningCanvas";
+import { getModelOptions, getRuntimeModel, type RuntimeType } from "../../models";
 
 interface ConfigTabProps {
   agent?: Agent | null;
@@ -22,6 +23,7 @@ export function ConfigTab({
   const config = workflowNode?.config || {};
   const model = agent?.model || config.model || plannedAgent?.model || "sonnet";
   const runtime = agent?.runtime || config.runtime || plannedAgent?.runtime || "claude-code";
+  const modelOptions = getModelOptions(runtime);
   const prompt = agent?.prompt || config.prompt || config.task || plannedAgent?.task || "";
   const workdir = config.workdir || plannedAgent?.workdir || ".";
 
@@ -38,7 +40,13 @@ export function ConfigTab({
         <select
           value={runtime}
           disabled={!editable}
-          onChange={(e) => onUpdatePlannedAgent?.({ runtime: e.target.value })}
+          onChange={(e) => {
+            const nextRuntime = e.target.value as RuntimeType;
+            onUpdatePlannedAgent?.({
+              runtime: nextRuntime,
+              model: getRuntimeModel(nextRuntime, model),
+            });
+          }}
           className={`w-full text-xs px-3 py-2 bg-deck-surface-2 border border-deck-border rounded text-deck-text focus:outline-none ${editable ? "cursor-pointer focus:border-deck-accent" : ""}`}
         >
           <option value="claude-code">Claude Code</option>
@@ -59,9 +67,11 @@ export function ConfigTab({
           onChange={(e) => onUpdatePlannedAgent?.({ model: e.target.value })}
           className={`w-full text-xs px-3 py-2 bg-deck-surface-2 border border-deck-border rounded text-deck-text focus:outline-none ${editable ? "cursor-pointer focus:border-deck-accent" : ""}`}
         >
-          <option value="haiku">Haiku 4.5</option>
-          <option value="sonnet">Sonnet 4.6</option>
-          <option value="opus">Opus 4.6</option>
+          {modelOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
         </select>
       </div>
 
