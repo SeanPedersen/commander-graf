@@ -9,7 +9,14 @@ import { spawn, execSync } from "child_process";
 import os from "os";
 import path from "path";
 import fs from "fs";
-import type { ProjectStructure, MissionPlan, PlannedAgent } from "./types.js";
+import { StreamParser } from "./stream-parser.js";
+import type {
+  ProjectStructure,
+  MissionPlan,
+  PlannedAgent,
+  StreamEvent,
+  PromptEvent,
+} from "./types.js";
 import type { RuntimeType } from "../core/types.js";
 
 /** Resolve the claude binary path (same logic as ClaudeAdapter) */
@@ -36,11 +43,21 @@ const CLAUDE_BIN = resolveClaudePath();
 /** Generate a mission plan from a task description and project structure */
 export async function planMission(
   task: string,
-  project: ProjectStructure
+  project: ProjectStructure,
+  onEvent?: (event: StreamEvent) => void
 ): Promise<MissionPlan> {
   const prompt = buildPrompt(task, project);
 
-  const resultText = await callClaude(prompt, project.root);
+  // Not part of the CLI's own stream — the UI wants to show what the
+  // architect was actually asked, same as any other agent's Config tab.
+  onEvent?.({
+    type: "prompt",
+    agentId: "architect",
+    timestamp: new Date().toISOString(),
+    data: { content: prompt },
+  } as PromptEvent);
+
+  const resultText = await callClaude(prompt, project.root, onEvent);
 
   return parsePlan(resultText, project);
 }
@@ -78,10 +95,18 @@ ${projectCtx}
 ${task}
 
 ## Instructions
-Decompose this task into 2-6 specialized agents. Each agent should have a focused, independent task.
-Consider dependencies between agents — agents that produce outputs needed by others should be listed in dependsOn.
+Before proposing a plan, investigate the codebase with your tools (Read, Grep, Glob) —
+look at the actual files the task will touch, existing conventions, and any related code.
+Briefly narrate what you're checking and why as you go; keep it short (a sentence or two
+per step), this isn't a full code review. This isn't optional busywork — it's how you make
+the plan concrete and correctly scoped instead of guessing from the project summary alone.
 
-Return ONLY a JSON object (no markdown, no explanation) with this exact schema:
+Then decompose the task into 2-6 specialized agents. Each agent should have a focused,
+independent task. Consider dependencies between agents — agents that produce outputs needed
+by others should be listed in dependsOn.
+
+Finish with ONLY a JSON object as your last message (no markdown fence needed, no
+explanation after it) with this exact schema:
 {
   "agents": [
     {
@@ -109,8 +134,15 @@ Rules:
 - Do NOT create agents for git commit, push, or finalize operations -- those are handled separately by the system.`;
 }
 
-function callClaude(prompt: string, cwd: string): Promise<string> {
+function callClaude(
+  prompt: string,
+  cwd: string,
+  onEvent?: (event: StreamEvent) => void
+): Promise<string> {
   return new Promise((resolve, reject) => {
+    const parser = onEvent ? new StreamParser("architect") : null;
+    parser?.on("event", (event: StreamEvent) => onEvent!(event));
+
     const args = [
       "--print",
       prompt,
@@ -143,7 +175,9 @@ function callClaude(prompt: string, cwd: string): Promise<string> {
     let resultText = "";
 
     proc.stdout?.on("data", (data: Buffer) => {
-      output += data.toString();
+      const text = data.toString();
+      output += text;
+      parser?.feed(text);
     });
 
     proc.stderr?.on("data", () => {
@@ -156,6 +190,7 @@ function callClaude(prompt: string, cwd: string): Promise<string> {
 
     proc.on("exit", (code) => {
       clearTimeout(timeout);
+      parser?.flush();
 
       if (code !== 0 && !output) {
         reject(new Error(`Claude CLI exited with code ${code}`));
@@ -203,11 +238,13 @@ function callClaude(prompt: string, cwd: string): Promise<string> {
       }
     });
 
-    // Timeout after 60 seconds
+    // Planning now involves real tool calls (Read/Grep/Glob) to investigate the
+    // codebase, not just a single completion, so give it more room than a plain
+    // one-shot prompt would need.
     const timeout = setTimeout(() => {
       proc.kill("SIGKILL");
-      reject(new Error("Claude CLI timed out after 60s"));
-    }, 60000);
+      reject(new Error("Claude CLI timed out after 180s"));
+    }, 180000);
   });
 }
 

@@ -11,12 +11,25 @@ import type {
   StreamEvent,
   TextEvent,
   ToolCallEvent,
+  ToolResultEvent,
   ThinkingEvent,
   CompleteEvent,
   ErrorEvent,
   InitEvent,
   ClaudeCliEvent,
 } from "./types.js";
+
+/** Tool result content is either a plain string or a list of content blocks (usually text). */
+function stringifyToolResultContent(content: unknown): string {
+  if (typeof content === "string") return content;
+  if (Array.isArray(content)) {
+    return content
+      .map((block: any) => (typeof block?.text === "string" ? block.text : JSON.stringify(block)))
+      .join("\n");
+  }
+  if (content == null) return "";
+  return JSON.stringify(content);
+}
 
 export class StreamParser extends EventEmitter {
   private agentId: string;
@@ -89,6 +102,28 @@ export class StreamParser extends EventEmitter {
         if (event.message?.content) {
           for (const block of event.message.content) {
             this.processContentBlock(block);
+          }
+        }
+        break;
+
+      case "user":
+        // Tool results come back as content blocks on a synthetic "user"
+        // turn — this is the only place the CLI reports what a tool_call
+        // (e.g. a Bash command) actually returned.
+        if (event.message?.content) {
+          for (const block of event.message.content) {
+            if (block.type === "tool_result" && block.tool_use_id) {
+              this.emitEvent<ToolResultEvent>({
+                type: "tool_result",
+                agentId: this.agentId,
+                timestamp: new Date().toISOString(),
+                data: {
+                  toolId: block.tool_use_id,
+                  content: stringifyToolResultContent(block.content),
+                  isError: block.is_error,
+                },
+              });
+            }
           }
         }
         break;

@@ -104,7 +104,8 @@ export type StreamEventType =
   | "tool_result"
   | "thinking"
   | "complete"
-  | "error";
+  | "error"
+  | "prompt";
 
 export interface StreamEvent {
   type: StreamEventType;
@@ -128,9 +129,21 @@ export interface ToolCallEvent extends StreamEvent {
   data: { toolId: string; toolName: string; toolInput: unknown };
 }
 
+export interface ToolResultEvent extends StreamEvent {
+  type: "tool_result";
+  data: { toolId: string; content: string; isError?: boolean };
+}
+
 export interface ThinkingEvent extends StreamEvent {
   type: "thinking";
   data: { content: string; isPartial?: boolean };
+}
+
+/** Synthetic, non-CLI event: the full instructions handed to the architect,
+ *  emitted once up front so the UI can show what it was actually asked. */
+export interface PromptEvent extends StreamEvent {
+  type: "prompt";
+  data: { content: string };
 }
 
 export interface CompleteEvent extends StreamEvent {
@@ -168,6 +181,9 @@ export interface ClaudeCliEvent {
       name?: string;
       input?: unknown;
       thinking?: string;
+      tool_use_id?: string;
+      content?: unknown;
+      is_error?: boolean;
     }>;
     model?: string;
   };

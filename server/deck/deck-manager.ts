@@ -133,6 +133,19 @@ export class DeckManager extends EventEmitter {
       adapter.kill();
       adapter.dispose();
       this.adapters.delete(id);
+    } else {
+      // No in-memory adapter (e.g. the map was lost to a server restart) —
+      // fall back to killing the OS process directly via its persisted PID
+      // so an orphaned CLI process can't keep running invisibly after the
+      // workflow has already been marked dead/cancelled.
+      const staleAgent = this.store.getAgent(id);
+      if (staleAgent?.pid) {
+        try {
+          process.kill(staleAgent.pid, "SIGKILL");
+        } catch {
+          // Already dead — nothing to do.
+        }
+      }
     }
 
     this.store.updateAgentStatus(id, "dead");
@@ -360,6 +373,9 @@ export class DeckManager extends EventEmitter {
       if (!data.isPartial) {
         content = data.content;
       }
+    } else if (event.type === "tool_result") {
+      const data = event.data as { content: string };
+      content = data.content;
     } else if (event.type === "error") {
       const data = event.data as { message: string };
       content = data.message;
