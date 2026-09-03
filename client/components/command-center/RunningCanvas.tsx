@@ -19,6 +19,7 @@ import "@xyflow/react/dist/style.css";
 
 import { AgentNode, type AgentNodeData } from "./AgentNode";
 import { useDeckStore } from "../../stores/deck-store";
+import { canvasColors, type CanvasColors } from "../../styles/canvas-colors";
 import type { WorkflowState } from "../../stores/deck-store";
 
 const NODE_WIDTH = 256;
@@ -30,7 +31,10 @@ interface RunningCanvasProps {
   onAbort: () => void;
 }
 
-function buildDag(workflow: WorkflowState): { nodes: Node[]; edges: Edge[] } {
+function buildDag(
+  workflow: WorkflowState,
+  colors: CanvasColors
+): { nodes: Node[]; edges: Edge[] } {
   const g = new dagre.graphlib.Graph();
   g.setDefaultEdgeLabel(() => ({}));
   g.setGraph({ rankdir: "TB", nodesep: 40, ranksep: 60 });
@@ -73,15 +77,15 @@ function buildDag(workflow: WorkflowState): { nodes: Node[]; edges: Edge[] } {
       type: MarkerType.ArrowClosed,
       width: 12,
       height: 12,
-      color: "#3a3a4a",
+      color: colors.edge,
     },
     style: {
       stroke:
         workflow.nodes[e.target]?.status === "running"
-          ? "#22c55e"
+          ? colors.edgeRunning
           : workflow.nodes[e.target]?.status === "failed"
-            ? "#ef4444"
-            : "#3a3a4a",
+            ? colors.edgeFailed
+            : colors.edge,
       strokeWidth: 1.5,
     },
   }));
@@ -90,11 +94,15 @@ function buildDag(workflow: WorkflowState): { nodes: Node[]; edges: Edge[] } {
 }
 
 export function RunningCanvas({ onSelectNode, onAbort }: RunningCanvasProps) {
-  const { activeWorkflow, setSelectedAgentId } = useDeckStore();
+  const { activeWorkflow, setSelectedAgentId, theme } = useDeckStore();
+  const colors = canvasColors(theme);
 
   const { nodes: builtNodes, edges: builtEdges } = useMemo(
-    () => (activeWorkflow ? buildDag(activeWorkflow) : { nodes: [], edges: [] }),
-    [activeWorkflow]
+    () =>
+      activeWorkflow
+        ? buildDag(activeWorkflow, colors)
+        : { nodes: [], edges: [] },
+    [activeWorkflow, colors]
   );
 
   const [nodes, setNodes, onNodesChange] = useNodesState(builtNodes);
@@ -186,7 +194,7 @@ export function RunningCanvas({ onSelectNode, onAbort }: RunningCanvasProps) {
           maxZoom={1.5}
           proOptions={{ hideAttribution: true }}
         >
-          <Background color="#1a1a25" gap={20} size={1} />
+          <Background color={colors.dot} gap={20} size={1} />
           <Controls position="bottom-right" showInteractive={false} />
         </ReactFlow>
       </div>

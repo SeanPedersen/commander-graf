@@ -147,10 +147,10 @@ export function FinalizePanel() {
 
   const statusIcon = (status: ChangedFile["status"]) => {
     switch (status) {
-      case "added": return <span className="text-green-400 text-[10px] font-mono w-3">A</span>;
-      case "modified": return <span className="text-yellow-400 text-[10px] font-mono w-3">M</span>;
-      case "deleted": return <span className="text-red-400 text-[10px] font-mono w-3">D</span>;
-      case "renamed": return <span className="text-blue-400 text-[10px] font-mono w-3">R</span>;
+      case "added": return <span className="text-deck-diff-add text-[10px] font-mono w-3">A</span>;
+      case "modified": return <span className="text-deck-warning text-[10px] font-mono w-3">M</span>;
+      case "deleted": return <span className="text-deck-diff-del text-[10px] font-mono w-3">D</span>;
+      case "renamed": return <span className="text-deck-info text-[10px] font-mono w-3">R</span>;
     }
   };
 
@@ -205,9 +205,9 @@ export function FinalizePanel() {
                 {statusIcon(file.status)}
                 <span className="text-xs font-mono text-deck-text truncate flex-1">{file.path}</span>
                 <span className="text-[10px] text-deck-text-dim shrink-0">
-                  {file.additions > 0 && <span className="text-green-400">+{file.additions}</span>}
+                  {file.additions > 0 && <span className="text-deck-diff-add">+{file.additions}</span>}
                   {file.additions > 0 && file.deletions > 0 && " "}
-                  {file.deletions > 0 && <span className="text-red-400">-{file.deletions}</span>}
+                  {file.deletions > 0 && <span className="text-deck-diff-del">-{file.deletions}</span>}
                 </span>
                 <button
                   onClick={() => viewDiff(file.path)}

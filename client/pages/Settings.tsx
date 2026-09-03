@@ -190,7 +190,7 @@ export function Settings() {
                           {team.name}
                         </span>
                         {team.source === "file" && (
-                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-900/30 text-purple-300 font-medium">
+                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-deck-thinking/15 text-deck-thinking font-medium">
                             YAML
                           </span>
                         )}

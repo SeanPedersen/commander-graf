@@ -188,7 +188,7 @@ export function OutputDrawer() {
                       </span>
                     )}
                     {evt.type === "tool_call" && (
-                      <span className="text-blue-400">
+                      <span className="text-deck-info">
                         [{evt.agentName}] {">"}{" "}
                         {evt.data?.toolName
                           ?.replace(/^mcp__[^_]+__/, "")
@@ -223,7 +223,7 @@ export function OutputDrawer() {
                     </span>
                   )}
                   {evt.type === "tool_call" && (
-                    <span className="text-blue-400">
+                    <span className="text-deck-info">
                       {">"}{" "}
                       {evt.data?.toolName
                         ?.replace(/^mcp__[^_]+__/, "")

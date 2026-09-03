@@ -4,7 +4,7 @@ export function StatusDot({ status }: { status: string }) {
     queued: "bg-deck-warning",
     running: "bg-deck-success",
     idle: "bg-deck-warning",
-    paused: "bg-blue-400",
+    paused: "bg-deck-info",
     completed: "bg-deck-accent",
     success: "bg-deck-success",
     failed: "bg-deck-error",

@@ -37,7 +37,7 @@ export function AddProjectModal({ onAdd, onClose }: AddProjectModalProps) {
 
   return (
     <div
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+      className="fixed inset-0 bg-deck-scrim/50 flex items-center justify-center z-50"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div className="bg-deck-surface border border-deck-border rounded-xl shadow-xl w-full max-w-md mx-4">

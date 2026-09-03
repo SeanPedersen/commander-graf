@@ -34,11 +34,11 @@ const STATUS_BORDER: Record<string, string> = {
 };
 
 const ROLE_BADGE: Record<string, string> = {
-  researcher: "bg-purple-900/50 text-purple-300",
-  implementer: "bg-blue-900/50 text-blue-300",
-  tester: "bg-emerald-900/50 text-emerald-300",
-  reviewer: "bg-amber-900/50 text-amber-300",
-  devops: "bg-orange-900/50 text-orange-300",
+  researcher: "bg-deck-role-researcher/15 text-deck-role-researcher",
+  implementer: "bg-deck-role-implementer/15 text-deck-role-implementer",
+  tester: "bg-deck-role-tester/15 text-deck-role-tester",
+  reviewer: "bg-deck-role-reviewer/15 text-deck-role-reviewer",
+  devops: "bg-deck-role-devops/15 text-deck-role-devops",
 };
 
 function AgentNodeComponent({ data, selected }: NodeProps) {

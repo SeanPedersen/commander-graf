@@ -23,7 +23,7 @@ export function DiffViewer({ file, diff, onClose }: DiffViewerProps) {
 
   return (
     <div
-      className="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
+      className="fixed inset-0 bg-deck-scrim/60 flex items-center justify-center z-50"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div className="bg-deck-surface border border-deck-border rounded-xl shadow-xl w-full max-w-3xl mx-4 max-h-[80vh] flex flex-col">
@@ -46,11 +46,11 @@ export function DiffViewer({ file, diff, onClose }: DiffViewerProps) {
             {lines.map((line, i) => {
               let className = "px-4 py-0";
               if (line.startsWith("+") && !line.startsWith("+++")) {
-                className += " bg-green-950/30 text-green-400";
+                className += " bg-deck-diff-add/10 text-deck-diff-add";
               } else if (line.startsWith("-") && !line.startsWith("---")) {
-                className += " bg-red-950/30 text-red-400";
+                className += " bg-deck-diff-del/10 text-deck-diff-del";
               } else if (line.startsWith("@@")) {
-                className += " bg-blue-950/20 text-blue-400";
+                className += " bg-deck-diff-hunk/10 text-deck-diff-hunk";
               } else {
                 className += " text-deck-text-dim";
               }
