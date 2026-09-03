@@ -50,7 +50,7 @@ const workspaceManager = new WorkspaceManager(coreStore);
 // Auto-add cwd as workspace on startup (skip root dir in Electron)
 const cwd = process.cwd();
 if (cwd !== "/" && cwd !== "C:\\") {
-  try { workspaceManager.add(cwd); } catch {}
+  try { workspaceManager.add(cwd); } catch { }
 }
 
 // ─── REST Routes ───────────────────────────────────
@@ -105,12 +105,10 @@ if (litellmBridge.isEnabled()) {
 function tryListen(port: number, maxRetries = 5): void {
   server.listen(port, () => {
     console.log(`
-  ┌─────────────────────────────────┐
-  │  Agent Deck v1.0                │
-  │  http://localhost:${port}          │
-  │  WebSocket: ws://localhost:${port}/ws│
-  │  Dev: http://localhost:5200     │
-  └─────────────────────────────────┘
+Agent Deck v1.0                
+http://localhost:${port}          
+WebSocket: ws://localhost:${port}/ws
+Dev: http://localhost:5200     
     `.trim());
   });
 
