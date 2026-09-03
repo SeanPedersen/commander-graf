@@ -7,11 +7,40 @@ import { useState, useEffect } from "react";
 
 const API_BASE = "/api/deck";
 
+type RuntimeType = "claude-code" | "codex" | "gemini-cli" | "litellm";
+
+interface ModelOption {
+  value: string;
+  label: string;
+}
+
+const MODELS_BY_RUNTIME: Record<RuntimeType, readonly ModelOption[]> = {
+  "claude-code": [
+    { value: "haiku", label: "Haiku 4.5" },
+    { value: "sonnet", label: "Sonnet 4.6" },
+    { value: "opus", label: "Opus 4.6" },
+  ],
+  codex: [
+    { value: "gpt-5.6-sol", label: "GPT-5.6 Sol" },
+    { value: "gpt-5.6-terra", label: "GPT-5.6 Terra" },
+    { value: "gpt-5.6-luna", label: "GPT-5.6 Luna" },
+  ],
+  "gemini-cli": [
+    { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
+    { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro" },
+  ],
+  litellm: [
+    { value: "haiku", label: "Haiku 4.5" },
+    { value: "sonnet", label: "Sonnet 4.6" },
+    { value: "opus", label: "Opus 4.6" },
+  ],
+};
+
 interface DeckSettings {
   maxAgents: number;
   maxBudgetUsd: number;
   defaultModel: string;
-  defaultRuntime: string;
+  defaultRuntime: RuntimeType;
 }
 
 interface TeamConfig {
@@ -32,15 +61,39 @@ export function Settings() {
   const [teams, setTeams] = useState<TeamConfig[]>([]);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
-  // Fetch settings and teams
+  const modelOptions = MODELS_BY_RUNTIME[settings.defaultRuntime];
+
+  const handleRuntimeChange = (runtime: RuntimeType) => {
+    setSettings((currentSettings) => {
+      const nextModelOptions = MODELS_BY_RUNTIME[runtime];
+      const supportsCurrentModel = nextModelOptions.some(
+        (model) => model.value === currentSettings.defaultModel
+      );
+
+      return {
+        ...currentSettings,
+        defaultRuntime: runtime,
+        defaultModel: supportsCurrentModel
+          ? currentSettings.defaultModel
+          : nextModelOptions[0].value,
+      };
+    });
+  };
+
   useEffect(() => {
     async function load() {
       try {
-        const [teamsRes] = await Promise.all([fetch(`${API_BASE}/teams`)]);
+        const [settingsRes, teamsRes] = await Promise.all([
+          fetch(`${API_BASE}/settings`),
+          fetch(`${API_BASE}/teams`),
+        ]);
+
+        if (settingsRes.ok) setSettings(await settingsRes.json());
         if (teamsRes.ok) setTeams(await teamsRes.json());
       } catch {
-        // ignore
+        // Retain the local defaults when the API is unavailable.
       }
     }
     load();
@@ -48,12 +101,22 @@ export function Settings() {
 
   const handleSave = async () => {
     setSaving(true);
+    setSaved(false);
+    setSaveError(null);
+
     try {
-      // Settings are currently client-side only
-      // In a full implementation, POST to /api/deck/settings
-      await new Promise((r) => setTimeout(r, 300));
+      const response = await fetch(`${API_BASE}/settings`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(settings),
+      });
+      if (!response.ok) throw new Error("Unable to save settings");
+
+      setSettings(await response.json());
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
+    } catch {
+      setSaveError("Unable to save settings. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -110,6 +173,21 @@ export function Settings() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-[10px] uppercase text-deck-muted block mb-1">
+                  Default Runtime
+                </label>
+                <select
+                  value={settings.defaultRuntime}
+                  onChange={(e) => handleRuntimeChange(e.target.value as RuntimeType)}
+                  className="w-full text-xs px-3 py-2 bg-deck-surface-2 border border-deck-border rounded text-deck-text focus:outline-none focus:border-deck-accent"
+                >
+                  <option value="claude-code">Claude Code</option>
+                  <option value="codex">Codex</option>
+                  <option value="gemini-cli">Gemini CLI</option>
+                  <option value="litellm">LiteLLM Proxy</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] uppercase text-deck-muted block mb-1">
                   Default Model
                 </label>
                 <select
@@ -119,34 +197,21 @@ export function Settings() {
                   }
                   className="w-full text-xs px-3 py-2 bg-deck-surface-2 border border-deck-border rounded text-deck-text focus:outline-none focus:border-deck-accent"
                 >
-                  <option value="haiku">Haiku 4.5</option>
-                  <option value="sonnet">Sonnet 4.6</option>
-                  <option value="opus">Opus 4.6</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-[10px] uppercase text-deck-muted block mb-1">
-                  Default Runtime
-                </label>
-                <select
-                  value={settings.defaultRuntime}
-                  onChange={(e) =>
-                    setSettings({
-                      ...settings,
-                      defaultRuntime: e.target.value,
-                    })
-                  }
-                  className="w-full text-xs px-3 py-2 bg-deck-surface-2 border border-deck-border rounded text-deck-text focus:outline-none focus:border-deck-accent"
-                >
-                  <option value="claude-code">Claude Code</option>
-                  <option value="codex">Codex</option>
-                  <option value="gemini-cli">Gemini CLI</option>
-                  <option value="litellm">LiteLLM Proxy</option>
+                  {modelOptions.map((model) => (
+                    <option key={model.value} value={model.value}>
+                      {model.label}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
 
             <div className="flex justify-end pt-2">
+              {saveError && (
+                <span className="mr-3 self-center text-xs text-deck-error">
+                  {saveError}
+                </span>
+              )}
               <button
                 onClick={handleSave}
                 disabled={saving}
