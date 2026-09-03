@@ -289,7 +289,8 @@ export interface PlannedAgent {
   task: string;
   role?: string;
   workdir: string;
-  model: string;
+  model?: string;
+  runtime?: RuntimeType;
   dependsOn: string[];
 }
 
@@ -309,6 +310,7 @@ export interface TeamConfigSchema {
 export interface TeamAgentDef {
   name: string;
   model?: string;
+  runtime?: RuntimeType;
   prompt: string;
   workspace?: string;
   agent_type?: string;

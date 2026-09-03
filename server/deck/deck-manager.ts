@@ -280,6 +280,7 @@ export class DeckManager extends EventEmitter {
         name: agentDef.name,
         prompt: agentDef.prompt,
         model: agentDef.model,
+        runtime: agentDef.runtime,
         workspace: agentDef.workspace,
         agent_type: agentDef.agent_type || "general",
         team_config_id: teamConfigId,

@@ -60,6 +60,7 @@ export class WorkflowExecutor extends EventEmitter {
           name: agent.name,
           prompt: agent.task,
           model: agent.model || "sonnet",
+          runtime: agent.runtime || "claude-code",
           workspace: agent.workdir === "."
             ? projectRoot
             : `${projectRoot}/${agent.workdir}`,

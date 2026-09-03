@@ -10,6 +10,7 @@ import os from "os";
 import path from "path";
 import fs from "fs";
 import type { ProjectStructure, MissionPlan, PlannedAgent } from "./types.js";
+import type { RuntimeType } from "../core/types.js";
 
 /** Resolve the claude binary path (same logic as ClaudeAdapter) */
 function resolveClaudePath(): string {
@@ -44,7 +45,18 @@ export async function planMission(
   return parsePlan(resultText, project);
 }
 
+function configuredRuntime(): RuntimeType {
+  const configured = process.env.DECK_DEFAULT_RUNTIME;
+  return configured === "codex" || configured === "gemini-cli" || configured === "litellm"
+    ? configured
+    : "claude-code";
+}
+
 function buildPrompt(task: string, project: ProjectStructure): string {
+  const runtime = configuredRuntime();
+  const modelGuidance = runtime === "codex"
+    ? "Use the configured Codex default model unless a task explicitly needs a model identifier supplied by the operator."
+    : "Use \"sonnet\" as default model. Use \"opus\" only for complex architectural decisions or critical reviews. Use \"haiku\" for simple searches, linting, or formatting tasks.";
   const projectCtx = [
     `Project: ${project.name}`,
     `Type: ${project.type}`,
@@ -78,6 +90,7 @@ Return ONLY a JSON object (no markdown, no explanation) with this exact schema:
       "role": "researcher|implementer|tester|reviewer|devops",
       "workdir": ".",
       "model": "sonnet",
+      "runtime": "${runtime}",
       "dependsOn": []
     }
   ],
@@ -86,8 +99,8 @@ Return ONLY a JSON object (no markdown, no explanation) with this exact schema:
 }
 
 Rules:
-- Use "sonnet" as default model. Use "opus" only for complex architectural decisions or critical reviews.
-- Use "haiku" for simple searches, linting, or formatting tasks.
+- Set runtime to "${runtime}" for every agent.
+- ${modelGuidance}
 - workdir should be relative to project root (use "." for root).
 - For monorepos, assign agents to specific package directories when possible.
 - dependsOn contains agent names that must complete before this agent starts.
@@ -199,6 +212,7 @@ function callClaude(prompt: string, cwd: string): Promise<string> {
 }
 
 function parsePlan(text: string, project: ProjectStructure): MissionPlan {
+  const defaultRuntime = configuredRuntime();
   // Extract JSON from response (handle markdown code blocks)
   let jsonStr = text.trim();
   const codeBlockMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
@@ -220,7 +234,10 @@ function parsePlan(text: string, project: ProjectStructure): MissionPlan {
       task: String(a.task || ""),
       role: a.role || undefined,
       workdir: String(a.workdir || "."),
-      model: String(a.model || "sonnet"),
+      model: a.model ? String(a.model) : undefined,
+      runtime: a.runtime === "codex" || a.runtime === "gemini-cli" || a.runtime === "litellm"
+        ? a.runtime
+        : defaultRuntime,
       dependsOn: Array.isArray(a.dependsOn) ? a.dependsOn.map(String) : [],
     }));
 

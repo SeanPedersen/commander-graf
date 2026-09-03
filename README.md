@@ -19,6 +19,20 @@ Describe a task in plain English. The AI architect decomposes it into a multi-ag
 - **Multi-Runtime** — Claude Code, Codex, Gemini CLI, or any model via LiteLLM proxy
 - **Session Recovery** — SQLite-backed persistence with crash recovery
 
+### Codex runtime
+
+Codex tasks run in the selected workspace; Agent Deck does not create Git worktrees.
+Set `runtime: codex` in a team YAML, or use Codex for architect-generated plans:
+
+```bash
+DECK_DEFAULT_RUNTIME=codex npx agent-deck
+```
+
+Codex uses `workspace-write` sandboxing and `never` approval prompts by default.
+Override these for a local installation with `DECK_CODEX_SANDBOX` and
+`DECK_CODEX_APPROVAL_POLICY`. Set a concrete Codex model in team YAML when you
+do not want the CLI's configured default.
+
 ## Quick Start
 
 ```bash

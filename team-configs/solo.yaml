@@ -3,5 +3,6 @@ description: Single agent for focused work
 agents:
   - name: worker
     model: sonnet
+    runtime: claude-code
     prompt: Complete the assigned task.
     agent_type: general
