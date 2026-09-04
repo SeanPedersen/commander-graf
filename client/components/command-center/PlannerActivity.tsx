@@ -101,6 +101,7 @@ function PlannerOutputEvent({ event }: { event: StreamEvent }) {
 export function PlannerActivity({ planId, task, complete = false }: PlannerActivityProps) {
   const { outputEvents } = useDeckStore();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [taskExpanded, setTaskExpanded] = useState(false);
   const events = planId ? outputEvents[planId] || [] : [];
   const progress = useMemo(() => events.map(progressFrom).filter(Boolean) as PlannerProgress[], [events]);
   const prompts = useMemo(() => events.map(promptFrom).filter(Boolean) as PlannerPrompt[], [events]);
@@ -119,7 +120,17 @@ export function PlannerActivity({ planId, task, complete = false }: PlannerActiv
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4">
         <section>
           <p className="text-[10px] uppercase tracking-wide text-deck-muted">Build task</p>
-          <p className="mt-1 text-xs text-deck-text whitespace-pre-wrap">{task}</p>
+          <div className="mt-1 relative">
+            <p className={`text-xs text-deck-text whitespace-pre-wrap ${taskExpanded ? "" : "max-h-20 overflow-hidden"}`}>{task}</p>
+            {task.split("\n").length > 3 || task.length > 120 ? (
+              <button
+                onClick={() => setTaskExpanded((v) => !v)}
+                className="text-[10px] text-deck-info hover:text-deck-info/80 mt-0.5"
+              >
+                {taskExpanded ? "Show less" : "Show more"}
+              </button>
+            ) : null}
+          </div>
         </section>
         <section className="space-y-2">
           <p className="text-[10px] uppercase tracking-wide text-deck-muted">Stages</p>
