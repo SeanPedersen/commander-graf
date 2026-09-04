@@ -375,6 +375,8 @@ export interface CostSummary {
 // =====================================================
 
 export interface DeckSettings {
+  defaultModel: string;
+  defaultRuntime: RuntimeType;
   maxAgents: number;
   maxBudgetUsd: number;
   idleThresholdSeconds: number;
@@ -389,6 +391,8 @@ export interface DeckSettings {
 }
 
 export const DEFAULT_SETTINGS: DeckSettings = {
+  defaultModel: "sonnet",
+  defaultRuntime: "claude-code",
   maxAgents: 10,
   maxBudgetUsd: 50,
   idleThresholdSeconds: 300,

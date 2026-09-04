@@ -15,7 +15,7 @@ function mergeSettings(store: DeckStore): DeckSettings {
   const merged: DeckSettings = { ...resolveSettings() };
   for (const [key, value] of Object.entries(store.getAllSettings())) {
     if (!(key in merged)) continue;
-    const defaultVal = (DEFAULT_SETTINGS as Record<string, unknown>)[key];
+    const defaultVal = (DEFAULT_SETTINGS as unknown as Record<string, unknown>)[key];
     if (Array.isArray(defaultVal)) {
       try { (merged as unknown as Record<string, unknown>)[key] = JSON.parse(value); } catch { /* Ignore malformed legacy values. */ }
     } else if (typeof defaultVal === "number") {

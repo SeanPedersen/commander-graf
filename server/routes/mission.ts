@@ -13,7 +13,7 @@ import type { WorkspaceManager } from "../core/workspace-manager.js";
 import type { RuntimeType } from "../core/types.js";
 
 function toRuntimeType(value: string | undefined): RuntimeType | undefined {
-  return value === "claude-code" || value === "codex" || value === "gemini-cli" || value === "litellm"
+  return value === "claude-code" || value === "codex" || value === "opencode"
     ? value
     : undefined;
 }

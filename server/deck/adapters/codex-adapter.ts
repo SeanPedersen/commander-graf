@@ -100,6 +100,7 @@ export class CodexAdapter extends EventEmitter implements AgentAdapter {
     const args = [
       "exec",
       "--json",
+      "--skip-git-repo-check",
       "--cd", config.workspace || process.cwd(),
       "--sandbox", process.env.DECK_CODEX_SANDBOX || "workspace-write",
     ];

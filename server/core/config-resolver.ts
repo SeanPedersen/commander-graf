@@ -137,6 +137,8 @@ function applySettingsLayer(
   target: DeckSettings,
   layer: Partial<DeckSettings>
 ): void {
+  if (layer.defaultModel !== undefined) target.defaultModel = layer.defaultModel;
+  if (layer.defaultRuntime !== undefined) target.defaultRuntime = layer.defaultRuntime;
   if (layer.maxAgents !== undefined) target.maxAgents = layer.maxAgents;
   if (layer.maxBudgetUsd !== undefined) target.maxBudgetUsd = layer.maxBudgetUsd;
   if (layer.idleThresholdSeconds !== undefined) target.idleThresholdSeconds = layer.idleThresholdSeconds;
@@ -152,6 +154,8 @@ function applySettingsLayer(
 
 function applyEnvLayer(target: DeckSettings): void {
   const envMap: Record<string, (val: string) => void> = {
+    DECK_DEFAULT_MODEL: (v) => { target.defaultModel = v; },
+    DECK_DEFAULT_RUNTIME: (v) => { target.defaultRuntime = v as DeckSettings["defaultRuntime"]; },
     DECK_MAX_AGENTS: (v) => { target.maxAgents = parseInt(v, 10); },
     DECK_MAX_BUDGET_USD: (v) => { target.maxBudgetUsd = parseFloat(v); },
     DECK_IDLE_THRESHOLD_SECONDS: (v) => { target.idleThresholdSeconds = parseInt(v, 10); },

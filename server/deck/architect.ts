@@ -94,7 +94,7 @@ ${task}
 
 ## Planning instructions
 1. Triage the request and investigate the repository before composing tasks.
-2. For bounded evidence gathering, use the configured cheap exploration model "${explorerModel}" for narrowly scoped questions. Limit exploration to four questions, and use no more than one additional follow-up round.
+2. For bounded evidence gathering, use the configured cheap exploration model "${explorerModel}" for narrowly scoped questions. When delegating, use Codex collaboration tools rather than launching a nested CLI process. Limit exploration to four questions, and use no more than one additional follow-up round.
 3. Design an executable task graph from that evidence, optimizing for wall-clock time (maximum parallel width, minimum chain depth):
    - Make each task atomic: one clear, independently reviewable outcome with no overlapping ownership.
    - Keep prompts concrete, scoped to the relevant files or symbols, and include verifiable acceptance criteria.
@@ -142,11 +142,13 @@ function emitProgress(
  *  heuristic over free text risks mistaking for the real delimiter. */
 const JSON_SCHEMA_TASK_GRAPH = {
   type: "object",
+  additionalProperties: false,
   properties: {
     tasks: {
       type: "array",
       items: {
         type: "object",
+        additionalProperties: false,
         properties: {
           id: { type: "string" },
           title: { type: "string" },
@@ -378,15 +380,19 @@ function callCodex(
 
     const proc = spawn(
       CODEX_BIN,
-      ["exec", "--json", "--cd", cwd, "--model", model, "--output-schema", schemaFile, prompt],
+      ["exec", "--json", "--enable", "multi_agent", "--skip-git-repo-check", "--cd", cwd, "--model", model, "--output-schema", schemaFile, prompt],
       {
         cwd,
-        env: process.env,
+        env: {
+          ...process.env,
+          CODEX_HOME: process.env.CODEX_HOME || path.join(os.homedir(), ".codex"),
+        },
         stdio: ["ignore", "pipe", "pipe"],
       }
     );
 
     let output = "";
+    let stderr = "";
 
     proc.stdout?.on("data", (data: Buffer) => {
       const text = data.toString();
@@ -394,8 +400,8 @@ function callCodex(
       parser?.feed(text);
     });
 
-    proc.stderr?.on("data", () => {
-      // Codex may emit progress information to stderr.
+    proc.stderr?.on("data", (data: Buffer) => {
+      stderr += data.toString();
     });
 
     proc.on("error", (error) => {
@@ -414,7 +420,10 @@ function callCodex(
         return;
       }
 
-      reject(new Error(`Codex CLI exited with code ${code}`));
+      const error = extractCodexError(output) || stderr.trim();
+      reject(new Error(error
+        ? `Codex CLI failed: ${error}`
+        : `Codex CLI exited with code ${code}`));
     });
 
     const timeout = setTimeout(() => {
@@ -444,6 +453,28 @@ function extractCodexResult(output: string): string | null {
   }
 
   return resultText;
+}
+
+function extractCodexError(output: string): string | null {
+  for (const line of output.split("\n").filter((entry) => entry.trim())) {
+    try {
+      const event = JSON.parse(line) as {
+        type?: string;
+        error?: string | { message?: string };
+        message?: string;
+      };
+      if (event.type !== "error" && event.type !== "turn.failed") continue;
+
+      const error = typeof event.error === "string"
+        ? event.error
+        : event.error?.message;
+      return error || event.message || null;
+    } catch {
+      // A malformed JSONL line cannot provide a reliable Codex error detail.
+    }
+  }
+
+  return null;
 }
 
 export function parsePlan(raw: unknown, _project?: ProjectStructure): MissionPlan {
