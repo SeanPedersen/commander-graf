@@ -8,10 +8,9 @@ import { useDeckStore } from "../../stores/deck-store";
 import { StatusDot } from "../shared/StatusDot";
 import { ConfigTab } from "./ConfigTab";
 import { LiveTab } from "./LiveTab";
-import { OutputTab } from "./OutputTab";
 import type { PlannedAgent } from "./PlanningCanvas";
 
-type Tab = "config" | "live" | "output";
+type Tab = "config" | "live";
 
 interface RightPanelProps {
   sendJsonMessage: (msg: any) => void;
@@ -53,20 +52,19 @@ export function RightPanel({
   const resolvedLiveId = agent?.id || workflowNode?.agentId || liveAgentId || null;
 
   const displayName =
-    agent?.name || workflowNode?.agentName || plannedAgent?.name || selectedAgentId;
+    agent?.name || workflowNode?.agentName || plannedAgent?.title || selectedAgentId;
   const displayStatus =
     agent?.status ||
     workflowNode?.status ||
     liveAgentStatus ||
     (liveAgentId ? "running" : "pending");
   const displayModel =
-    agent?.model || workflowNode?.config?.model || plannedAgent?.model || "sonnet";
+    agent?.model || workflowNode?.config?.model || plannedAgent?.complexity || "task";
   const ctx = agent ? contextUsage[agent.id] : undefined;
 
   const tabs: { key: Tab; label: string }[] = [
     { key: "config", label: "Config" },
-    { key: "live", label: "Live" },
-    { key: "output", label: "Output" },
+    { key: "live", label: "Activity" },
   ];
 
   return (
@@ -122,7 +120,6 @@ export function RightPanel({
         {activeTab === "live" && (
           <LiveTab agentId={resolvedLiveId} sendJsonMessage={sendJsonMessage} />
         )}
-        {activeTab === "output" && <OutputTab agentId={resolvedLiveId} />}
       </div>
 
       {/* Context bar */}

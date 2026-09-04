@@ -130,9 +130,19 @@ function handleMessage(
         ws.send(JSON.stringify({ type: "error", error: err.message }));
       }
       break;
-    case "deck:agent:focus":
-      ws.focusedAgentIds?.add(message.agentId);
+    case "deck:agent:focus": {
+      const focusedAgents = ws.focusedAgentIds;
+      if (!focusedAgents || focusedAgents.has(message.agentId)) break;
+      focusedAgents.add(message.agentId);
+      for (const buffered of deckManager.getAgentOutput(message.agentId)) {
+        ws.send(JSON.stringify({
+          type: "deck:agent:output",
+          agentId: message.agentId,
+          event: buffered.event,
+        }));
+      }
       break;
+    }
     case "deck:agent:unfocus":
       ws.focusedAgentIds?.delete(message.agentId);
       break;

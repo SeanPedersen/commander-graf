@@ -19,16 +19,12 @@ export function LiveTab({ agentId, sendJsonMessage }: LiveTabProps) {
 
   const events = agentId ? outputEvents[agentId] || [] : [];
 
-  // Focus agent on mount
+  // Keep the selected task subscribed so output remains available while the
+  // user reviews Config and returns to Activity.
   useEffect(() => {
     if (agentId) {
       sendJsonMessage({ type: "deck:agent:focus", agentId });
     }
-    return () => {
-      if (agentId) {
-        sendJsonMessage({ type: "deck:agent:unfocus", agentId });
-      }
-    };
   }, [agentId]);
 
   // Auto-scroll

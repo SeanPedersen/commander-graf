@@ -172,7 +172,16 @@ wss.on("connection", (ws: WSClient) => {
         }
 
         case "deck:agent:focus": {
-          ws.focusedAgentIds?.add(message.agentId);
+          const focusedAgents = ws.focusedAgentIds;
+          if (!focusedAgents || focusedAgents.has(message.agentId)) break;
+          focusedAgents.add(message.agentId);
+          for (const buffered of deckManager.getAgentOutput(message.agentId)) {
+            ws.send(JSON.stringify({
+              type: "deck:agent:output",
+              agentId: message.agentId,
+              event: buffered.event,
+            }));
+          }
           break;
         }
 

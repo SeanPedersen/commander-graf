@@ -33,8 +33,11 @@ export function CompletedSummary({ onNewMission }: CompletedSummaryProps) {
     }));
   }, [activeWorkflow]);
 
-  const isSuccess = activeWorkflow?.status === "completed";
+  // A successful workflow enters finalizing before the optional post-run
+  // commit/review step completes; it is already done executing task nodes.
+  const isSuccess = activeWorkflow?.status === "completed" || activeWorkflow?.status === "finalizing";
   const isFailed = activeWorkflow?.status === "failed";
+  const failureMessages = nodeStatuses.filter((node) => node.status === "failed" && node.error);
 
   const handleExport = () => {
     if (!activeWorkflow) return;
@@ -81,11 +84,23 @@ export function CompletedSummary({ onNewMission }: CompletedSummaryProps) {
           isSuccess ? "text-deck-success" : isFailed ? "text-deck-error" : "text-deck-muted"
         }`}
       >
-        {isSuccess ? "Mission Complete" : isFailed ? "Mission Failed" : "Mission Cancelled"}
+        {isSuccess ? "Mission Done" : isFailed ? "Mission Failed" : "Mission Cancelled"}
       </h2>
       <p className="text-xs text-deck-text-dim mb-6">
         {activeWorkflow?.name || "Workflow"}
       </p>
+
+      {isFailed && failureMessages.length > 0 && (
+        <div className="w-full max-w-md mb-6 rounded-lg border border-deck-error/40 bg-deck-error/10 p-3">
+          <p className="text-[10px] font-medium uppercase text-deck-error">Failure details</p>
+          {failureMessages.map((node) => (
+            <div key={node.name} className="mt-2">
+              <p className="text-xs font-medium text-deck-text">{node.name}</p>
+              <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap break-words font-mono text-[11px] leading-relaxed text-deck-error/90">{node.error}</pre>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Summary cards */}
       <div className="grid grid-cols-3 gap-4 mb-6 w-full max-w-md">

@@ -102,8 +102,11 @@ export class CodexAdapter extends EventEmitter implements AgentAdapter {
       "--json",
       "--cd", config.workspace || process.cwd(),
       "--sandbox", process.env.DECK_CODEX_SANDBOX || "workspace-write",
-      "--ask-for-approval", process.env.DECK_CODEX_APPROVAL_POLICY || "never",
     ];
+
+    // Current Codex CLI does not allow --approve-for-me with an explicit
+    // --sandbox. Keep the workflow's workspace-write boundary and let the
+    // non-interactive exec command use its sandbox approval behavior.
 
     if (config.model && !CLAUDE_MODEL_ALIASES.has(config.model)) {
       args.push("--model", config.model);
