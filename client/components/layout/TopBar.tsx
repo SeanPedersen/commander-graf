@@ -1,8 +1,15 @@
 import { useMemo } from "react";
 import { useDeckStore } from "../../stores/deck-store";
-import type { WorkspaceInfo } from "../../stores/deck-store";
+import type { WorkspaceInfo, Page } from "../../stores/deck-store";
 import { StatusDot } from "../shared/StatusDot";
 import type { ProjectStructure } from "../../hooks/use-project";
+
+const PAGE_TITLES: Record<Page, string> = {
+  home: "Commander Graf",
+  "command-center": "Command Center",
+  history: "History",
+  settings: "Settings",
+};
 
 interface TopBarProps {
   project: ProjectStructure | null;
@@ -82,7 +89,7 @@ export function TopBar({ project, activeWorkspace }: TopBarProps) {
     <div className={`shrink-0 h-10 border-b border-deck-border bg-deck-surface flex items-center justify-between ${isElectron ? "pl-20 pr-4" : "px-4"}`} style={isElectron ? { WebkitAppRegion: "drag" } as any : undefined}>
       {/* Left: project info */}
       <div className="flex items-center gap-3 min-w-0" style={{ WebkitAppRegion: "no-drag" } as any}>
-        {page !== "home" && activeWorkspace && (
+        {page === "command-center" && activeWorkspace && (
           <button
             onClick={goHome}
             className="text-deck-text-dim hover:text-deck-text transition-colors shrink-0"
@@ -94,17 +101,13 @@ export function TopBar({ project, activeWorkspace }: TopBarProps) {
           </button>
         )}
         <span className="text-xs font-semibold text-deck-text-bright truncate">
-          {activeWorkspace ? activeWorkspace.name : page === "home" ? "Commander Graf" : project?.name || "Commander Graf"}
+          {page === "command-center" && activeWorkspace ? activeWorkspace.name : PAGE_TITLES[page]}
         </span>
-        {activeWorkspace?.git_branch ? (
+        {page === "command-center" && (activeWorkspace?.git_branch || project?.gitBranch) && (
           <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-deck-surface-2 text-deck-text-dim truncate">
-            {activeWorkspace.git_branch}
+            {activeWorkspace?.git_branch || project?.gitBranch}
           </span>
-        ) : page !== "home" && project?.gitBranch ? (
-          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-deck-surface-2 text-deck-text-dim truncate">
-            {project.gitBranch}
-          </span>
-        ) : null}
+        )}
       </div>
 
       {/* Center: mode status */}
@@ -112,7 +115,7 @@ export function TopBar({ project, activeWorkspace }: TopBarProps) {
 
       {/* Right: cost + agent count + theme toggle */}
       <div className="flex items-center gap-3 shrink-0" style={{ WebkitAppRegion: "no-drag" } as any}>
-        {activeWorkspace && (
+        {page === "command-center" && activeWorkspace && (
           <div className="flex items-center gap-3 text-xs text-deck-text-dim">
             <span className="font-mono text-deck-success">
               ${totalCost.toFixed(2)}
