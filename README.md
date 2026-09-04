@@ -1,6 +1,4 @@
-# Agent Deck
-
-Web-based command center for orchestrating multiple AI coding agents.
+# Commander Graf
 
 Describe a task in plain English. The AI architect decomposes it into a multi-agent execution plan (DAG). Agents run in parallel where dependencies allow, with real-time streaming, cost tracking, and git finalize — all in your browser.
 
@@ -8,7 +6,7 @@ Describe a task in plain English. The AI architect decomposes it into a multi-ag
 
 ## Features
 
-- **AI Task Decomposition** — Describe what you want; the architect plans a multi-agent DAG automatically
+- **AI Task Decomposition** — Describe what you want; the architect plans a task DAG automatically
 - **DAG Execution Engine** — Kahn's algorithm with parallel scheduling, dependency resolution, and configurable failure strategies
 - **Multi-Project Workspaces** — Manage multiple projects from a single dashboard; auto-detects framework, language, and git branch
 - **Real-Time Streaming** — Watch agent output as it happens (text, thinking, tool calls) via WebSocket
@@ -18,19 +16,9 @@ Describe a task in plain English. The AI architect decomposes it into a multi-ag
 - **Multi-Runtime** — Claude Code, Codex, Gemini CLI, or any model via LiteLLM proxy
 - **Session Recovery** — SQLite-backed persistence with crash recovery
 
-### Codex runtime
+### Supported Runtimes
 
-Codex tasks run in the selected workspace; Agent Deck does not create Git worktrees.
-Select Codex as the runtime in Settings, or use it for architect-generated plans:
-
-```bash
-DECK_DEFAULT_RUNTIME=codex npx agent-deck
-```
-
-Codex uses `workspace-write` sandboxing and `never` approval prompts by default.
-Override these for a local installation with `DECK_CODEX_SANDBOX` and
-`DECK_CODEX_APPROVAL_POLICY`. Configure the planner, explorer, and task-tier
-models in Settings.
+Claude Code, OpenAI Codex, OpenCode
 
 ## Quick Start
 
@@ -60,9 +48,9 @@ npm run dev        # Dev mode with hot reload (localhost:5200)
 ┌─ Home ────────────────────────────────────────────────┐
 │  Select a project  →  Command Center  →  Finalize     │
 │                                                       │
-│  1. Describe task     "Add auth middleware"            │
-│  2. AI plans DAG      [researcher] → [implementer]    │
-│                       [implementer] → [tester]        │
+│  1. Describe task     "Add auth middleware"           │
+│  2. AI plans task DAG         .:.                     │
+│                               :.:                     │
 │  3. Review & launch   Agents run in parallel          │
 │  4. Monitor           Real-time streaming + cost      │
 │  5. Finalize          Review diff → commit → push     │
