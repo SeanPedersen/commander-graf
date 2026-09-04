@@ -1,18 +1,14 @@
 /**
- * Settings Routes - Config resolution, MCP servers, team templates.
+ * Settings Routes - Config resolution and MCP server discovery.
  */
 
 import { Router } from "express";
 import fs from "fs";
 import path from "path";
-import { fileURLToPath } from "url";
 import type { DeckStore } from "../core/db.js";
 import { resolveSettings } from "../core/config-resolver.js";
 import { DEFAULT_SETTINGS } from "../core/types.js";
 import type { DeckSettings } from "../core/types.js";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 export function createSettingsRouter(store: DeckStore): Router {
   const router = Router();
@@ -106,41 +102,6 @@ export function createSettingsRouter(store: DeckStore): Router {
       );
 
       res.json({ servers, path: mcpJsonPath });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  /** List team templates */
-  router.get("/team-templates", (_req, res) => {
-    try {
-      const configDir = path.join(__dirname, "../../team-configs");
-      const templates: Array<{ name: string; file: string; description?: string }> = [];
-
-      if (fs.existsSync(configDir)) {
-        const files = fs.readdirSync(configDir).filter(
-          (f) => f.endsWith(".yaml") || f.endsWith(".yml")
-        );
-
-        for (const file of files) {
-          const filePath = path.join(configDir, file);
-          try {
-            const content = fs.readFileSync(filePath, "utf-8");
-            // Simple extraction of name and description from YAML
-            const nameMatch = content.match(/^name:\s*(.+)$/m);
-            const descMatch = content.match(/^description:\s*(.+)$/m);
-            templates.push({
-              name: nameMatch ? nameMatch[1].trim().replace(/^['"]|['"]$/g, "") : file,
-              file,
-              description: descMatch ? descMatch[1].trim().replace(/^['"]|['"]$/g, "") : undefined,
-            });
-          } catch {
-            templates.push({ name: file, file });
-          }
-        }
-      }
-
-      res.json({ templates, configDir });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

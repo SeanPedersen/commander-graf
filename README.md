@@ -15,14 +15,13 @@ Describe a task in plain English. The AI architect decomposes it into a multi-ag
 - **Finalize System** — Review changed files, AI-generated commit message, one-click git commit + push
 - **Cost Tracking** — Per-agent and total cost with real-time estimates
 - **History** — Browse past missions by project, expand agent breakdowns, view commit info
-- **Team Configs** — Pre-define agent teams in YAML and launch with one click
 - **Multi-Runtime** — Claude Code, Codex, Gemini CLI, or any model via LiteLLM proxy
 - **Session Recovery** — SQLite-backed persistence with crash recovery
 
 ### Codex runtime
 
 Codex tasks run in the selected workspace; Agent Deck does not create Git worktrees.
-Set `runtime: codex` in a team YAML, or use Codex for architect-generated plans:
+Select Codex as the runtime in Settings, or use it for architect-generated plans:
 
 ```bash
 DECK_DEFAULT_RUNTIME=codex npx agent-deck
@@ -30,8 +29,8 @@ DECK_DEFAULT_RUNTIME=codex npx agent-deck
 
 Codex uses `workspace-write` sandboxing and `never` approval prompts by default.
 Override these for a local installation with `DECK_CODEX_SANDBOX` and
-`DECK_CODEX_APPROVAL_POLICY`. Set a concrete Codex model in team YAML when you
-do not want the CLI's configured default.
+`DECK_CODEX_APPROVAL_POLICY`. Configure the planner, explorer, and task-tier
+models in Settings.
 
 ## Quick Start
 
@@ -96,35 +95,11 @@ Browser (:5200)               Server (:3002)
 ### Workflow
 
 1. **Home** — Add project directories. Each card shows framework, language, git branch, and mission stats.
-2. **Command Center** — Enter a task description. The AI architect decomposes it into 2-6 specialized agents.
+2. **Command Center** — Enter a task description. The planner creates a dependency-aware task graph.
 3. **Planning Canvas** — Review the DAG. Adjust if needed. Click **Launch**.
 4. **Running Canvas** — Watch agents execute in real-time. React Flow DAG shows live status per node.
 5. **Finalize** — After all agents complete, review changed files, edit the AI-generated commit message, then Commit or Commit & Push.
-6. **History** — Browse past missions filtered by project. Expand to see agent breakdown and commit info.
-
-### Team Configs
-
-Pre-define agent teams and launch them with one click.
-
-Drop YAML files in `team-configs/`:
-
-```yaml
-# team-configs/fullstack-squad.yaml
-name: "Squad: Plan + Build + Test"
-description: Full development squad
-settings:
-  max_budget_usd: 5.0
-agents:
-  - name: planner
-    model: sonnet
-    prompt: Create a detailed implementation plan.
-  - name: implementer
-    model: sonnet
-    prompt: Implement the feature according to the plan.
-  - name: tester
-    model: haiku
-    prompt: Write comprehensive tests for the implementation.
-```
+6. **History** — Browse past missions filtered by project. Expand to see task breakdown and commit info.
 
 ### LiteLLM Proxy
 
@@ -177,8 +152,6 @@ LITELLM_PROXY_URL=http://localhost:4000 npx agent-deck     # Connect
 | `POST` | `/agents` | Spawn agent |
 | `DELETE` | `/agents/:id` | Kill agent |
 | `GET` | `/cost` | Cost summary + estimates |
-| `GET` | `/teams` | List team configs |
-| `POST` | `/teams/:id/launch` | Launch team |
 
 ### WebSocket — `ws://localhost:3002/ws`
 
@@ -219,7 +192,6 @@ agent-deck/
 │   ├── core/                  # types, db, architect, finalize, workspace-manager
 │   ├── deck/                  # DeckManager, WorkflowExecutor, adapters, cost/context estimators
 │   └── routes/                # REST API (workspaces, mission, history, finalize, agents, settings)
-├── team-configs/              # YAML team definitions
 ├── data/                      # SQLite database (auto-created)
 └── dist/                      # Built frontend (auto-generated)
 ```

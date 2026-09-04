@@ -33,7 +33,6 @@ export interface AgentConfig {
   agent_type?: string;
   runtime?: RuntimeType;
   interactive?: boolean;
-  team_config_id?: string;
   resumeSessionId?: string;
   // v1.0 additions
   maxBudgetUsd?: number;
@@ -55,7 +54,6 @@ export interface Agent {
   id: string;
   name: string;
   agent_type: string;
-  team_config_id: string | null;
   pid: number | null;
   status: AgentStatus;
   model: string;
@@ -143,7 +141,12 @@ export interface ThinkingEvent extends StreamEvent {
  *  emitted once up front so the UI can show what it was actually asked. */
 export interface PromptEvent extends StreamEvent {
   type: "prompt";
-  data: { content: string };
+  data: {
+    content: string;
+    stage?: "planner";
+    model?: string;
+    explorerModel?: string;
+  };
 }
 
 export interface CompleteEvent extends StreamEvent {
@@ -295,9 +298,27 @@ export interface PackageInfo {
 // =====================================================
 
 export interface MissionPlan {
-  agents: PlannedAgent[];
-  estimatedCost: number;
-  estimatedTimeMinutes: number;
+  /** v1 executable task graph. New plans always use this field. */
+  tasks?: PlannedTask[];
+  /** Legacy plans remain readable and relaunchable. */
+  agents?: PlannedAgent[];
+  estimatedCost?: number;
+  estimatedTimeMinutes?: number;
+}
+
+export type TaskComplexity = "low" | "medium" | "high";
+
+export interface PlannedTask {
+  id: string;
+  title: string;
+  /** Markdown instructions intentionally preserved without normalization. */
+  prompt: string;
+  workdir: string;
+  dependsOn: string[];
+  complexity: TaskComplexity;
+  acceptanceCriteria: string[];
+  /** Optional pre-launch override; otherwise routing selects a complexity model. */
+  model?: string;
 }
 
 export interface PlannedAgent {
@@ -308,37 +329,6 @@ export interface PlannedAgent {
   model?: string;
   runtime?: RuntimeType;
   dependsOn: string[];
-}
-
-// =====================================================
-// Team Config Types
-// =====================================================
-
-export interface TeamConfigSchema {
-  name: string;
-  description?: string;
-  agents: TeamAgentDef[];
-  settings?: {
-    max_budget_usd?: number;
-  };
-}
-
-export interface TeamAgentDef {
-  name: string;
-  model?: string;
-  runtime?: RuntimeType;
-  prompt: string;
-  workspace?: string;
-  agent_type?: string;
-}
-
-export interface DeckTeamConfig {
-  id: string;
-  name: string;
-  description: string;
-  config_json: string;
-  created_at: string;
-  updated_at: string;
 }
 
 // =====================================================
@@ -379,6 +369,11 @@ export interface DeckSettings {
   idleThresholdSeconds: number;
   defaultModel: string;
   defaultRuntime: RuntimeType;
+  plannerModel: string;
+  explorerModel: string;
+  lowComplexityModel: string;
+  mediumComplexityModel: string;
+  highComplexityModel: string;
   autoOpenBrowser: boolean;
   theme: "dark" | "light";
 }
@@ -389,6 +384,11 @@ export const DEFAULT_SETTINGS: DeckSettings = {
   idleThresholdSeconds: 300,
   defaultModel: "sonnet",
   defaultRuntime: "claude-code",
+  plannerModel: "sonnet",
+  explorerModel: "haiku",
+  lowComplexityModel: "haiku",
+  mediumComplexityModel: "sonnet",
+  highComplexityModel: "opus",
   autoOpenBrowser: true,
   theme: "dark",
 };

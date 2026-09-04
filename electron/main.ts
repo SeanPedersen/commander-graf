@@ -169,7 +169,6 @@ app.on("ready", async () => {
       process.env.PORT = String(serverPort);
       process.env.DECK_DB_PATH = path.join(dataDir, "deck.db");
       process.env.DECK_STATIC_DIR = path.join(__dirname, "../dist");
-      process.env.DECK_TEAM_CONFIGS = path.join(__dirname, "../team-configs");
 
       // Start bundled server (side-effect import)
       const serverPath = path.join(__dirname, "server.cjs");

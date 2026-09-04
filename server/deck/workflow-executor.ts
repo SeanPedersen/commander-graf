@@ -13,6 +13,7 @@ import type { DeckStore } from "./deck-db.js";
 import type {
   MissionPlan,
   PlannedAgent,
+  DeckSettings,
   WorkflowState,
   WorkflowStatus,
   NodeState,
@@ -20,6 +21,7 @@ import type {
   SpawnAgentConfig,
   DeckAgent,
 } from "./types.js";
+import { modelForComplexity } from "./model-router.js";
 
 const MAX_CONCURRENT_AGENTS = parseInt(process.env.DECK_MAX_AGENTS || "10", 10);
 
@@ -48,23 +50,43 @@ export class WorkflowExecutor extends EventEmitter {
   }
 
   /** Create and launch a workflow from a MissionPlan */
-  launchWorkflow(plan: MissionPlan, name: string, projectRoot: string, workspaceId?: string): WorkflowState {
+  launchWorkflow(plan: MissionPlan, name: string, projectRoot: string, workspaceId?: string, settings?: DeckSettings): WorkflowState {
     const workflowId = uuidv4();
+    const entries = plan.tasks
+      ? plan.tasks.map((task) => ({
+          name: task.id,
+          prompt: task.prompt,
+          workdir: task.workdir,
+          dependsOn: task.dependsOn,
+          model: task.model || (settings ? modelForComplexity(task.complexity, settings) : undefined),
+          runtime: settings?.defaultRuntime,
+          agentType: `task:${task.complexity}`,
+        }))
+      : (plan.agents || []).map((agent) => ({
+          name: agent.name,
+          prompt: agent.task,
+          workdir: agent.workdir,
+          dependsOn: agent.dependsOn,
+          model: agent.model,
+          runtime: agent.runtime,
+          agentType: agent.role || "general",
+        }));
+    if (entries.length === 0) throw new Error("Plan has no tasks or legacy agents");
 
     // Build nodes
     const nodes: Record<string, NodeState> = {};
-    for (const agent of plan.agents) {
-      nodes[agent.name] = {
-        agentName: agent.name,
+    for (const entry of entries) {
+      nodes[entry.name] = {
+        agentName: entry.name,
         config: {
-          name: agent.name,
-          prompt: agent.task,
-          model: agent.model || "sonnet",
-          runtime: agent.runtime || "claude-code",
-          workspace: agent.workdir === "."
+          name: entry.name,
+          prompt: entry.prompt,
+          model: entry.model || "sonnet",
+          runtime: entry.runtime || "claude-code",
+          workspace: entry.workdir === "."
             ? projectRoot
-            : `${projectRoot}/${agent.workdir}`,
-          agent_type: agent.role || "general",
+            : `${projectRoot}/${entry.workdir}`,
+          agent_type: entry.agentType,
         },
         status: "pending",
         cost: 0,
@@ -76,9 +98,9 @@ export class WorkflowExecutor extends EventEmitter {
 
     // Build edges
     const edges: WorkflowState["edges"] = [];
-    for (const agent of plan.agents) {
-      for (const dep of agent.dependsOn) {
-        edges.push({ source: dep, target: agent.name, condition: "success" });
+    for (const entry of entries) {
+      for (const dep of entry.dependsOn) {
+        edges.push({ source: dep, target: entry.name, condition: "success" });
       }
     }
 
@@ -330,6 +352,7 @@ export class WorkflowExecutor extends EventEmitter {
     } else if (agent.status === "dead") {
       node.status = "failed";
       node.cost = agent.total_cost_usd || 0;
+      node.error = this.failureMessage(agent.id);
       workflow.totalCost = Object.values(workflow.nodes)
         .reduce((sum, n) => sum + n.cost, 0);
 
@@ -340,6 +363,13 @@ export class WorkflowExecutor extends EventEmitter {
       // Schedule downstream (they'll be skipped due to abort-downstream)
       this.scheduleReady(mapping.workflowId);
     }
+  }
+
+  private failureMessage(agentId: string): string {
+    const error = this.deckManager
+      .getAgentEvents(agentId)
+      .find((event) => event.event_type === "error")?.content;
+    return error || "Agent exited before completing the task.";
   }
 
   /** Check if all nodes are terminal → mark workflow complete/failed */

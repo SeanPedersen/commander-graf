@@ -55,9 +55,9 @@ export function EmptyState({
                 {pendingPlan.task}
               </p>
               <p className="text-[10px] text-deck-text-dim mt-0.5">
-                {pendingPlan.plan.agents.length} agents · Est. $
-                {pendingPlan.plan.estimatedCost.toFixed(2)} · ~
-                {pendingPlan.plan.estimatedTimeMinutes}min
+                {"tasks" in pendingPlan.plan
+                  ? pendingPlan.plan.tasks.length
+                  : pendingPlan.plan.agents.length} {"tasks" in pendingPlan.plan ? "tasks" : "legacy agents"}
               </p>
             </div>
             <button

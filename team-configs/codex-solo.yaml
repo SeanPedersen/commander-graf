@@ -1,7 +1,0 @@
-name: Codex Solo Agent
-description: Single Codex agent for focused implementation work
-agents:
-  - name: codex-worker
-    runtime: codex
-    prompt: Complete the assigned task and verify the result.
-    agent_type: general

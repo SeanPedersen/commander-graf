@@ -10,7 +10,6 @@ import type {
   DeckAgent,
   DeckEvent,
   DeckCostSnapshot,
-  DeckTeamConfig,
   AgentStatus,
   CostSummary,
   SpawnAgentConfig,
@@ -61,15 +60,6 @@ export function initDeckSchema(db: Database.Database): void {
       output_tokens INTEGER NOT NULL DEFAULT 0,
       cache_read_tokens INTEGER NOT NULL DEFAULT 0,
       recorded_at TEXT DEFAULT (datetime('now'))
-    );
-
-    CREATE TABLE IF NOT EXISTS deck_team_configs (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      description TEXT DEFAULT '',
-      config_json TEXT NOT NULL DEFAULT '{}',
-      created_at TEXT DEFAULT (datetime('now')),
-      updated_at TEXT DEFAULT (datetime('now'))
     );
 
     CREATE TABLE IF NOT EXISTS deck_sessions (
@@ -252,20 +242,6 @@ export class DeckStore {
         GROUP BY hour ORDER BY hour
       `),
 
-      // Team configs
-      insertTeamConfig: this.db.prepare(`
-        INSERT INTO deck_team_configs (id, name, description, config_json) VALUES (?, ?, ?, ?)
-      `),
-      getTeamConfig: this.db.prepare(`SELECT * FROM deck_team_configs WHERE id = ?`),
-      getAllTeamConfigs: this.db.prepare(
-        `SELECT * FROM deck_team_configs ORDER BY updated_at DESC`
-      ),
-      updateTeamConfig: this.db.prepare(`
-        UPDATE deck_team_configs SET name = ?, description = ?, config_json = ?, updated_at = datetime('now')
-        WHERE id = ?
-      `),
-      deleteTeamConfig: this.db.prepare(`DELETE FROM deck_team_configs WHERE id = ?`),
-
       // Workflows
       insertWorkflow: this.db.prepare(`
         INSERT INTO deck_workflows (id, name, config_json, status, total_cost, started_at)
@@ -354,7 +330,7 @@ export class DeckStore {
       id,
       config.name,
       config.agent_type || "general",
-      config.team_config_id || null,
+      null,
       null,
       "running",
       config.model || "sonnet",
@@ -505,39 +481,6 @@ export class DeckStore {
       hour: string;
       cost: number;
     }>;
-  }
-
-  // === Team Configs ===
-
-  createTeamConfig(
-    name: string,
-    description: string,
-    configJson: string
-  ): DeckTeamConfig {
-    const id = uuidv4();
-    this.stmts.insertTeamConfig.run(id, name, description, configJson);
-    return this.stmts.getTeamConfig.get(id) as DeckTeamConfig;
-  }
-
-  getTeamConfig(id: string): DeckTeamConfig | undefined {
-    return this.stmts.getTeamConfig.get(id) as DeckTeamConfig | undefined;
-  }
-
-  getAllTeamConfigs(): DeckTeamConfig[] {
-    return this.stmts.getAllTeamConfigs.all() as DeckTeamConfig[];
-  }
-
-  updateTeamConfig(
-    id: string,
-    name: string,
-    description: string,
-    configJson: string
-  ): void {
-    this.stmts.updateTeamConfig.run(name, description, configJson, id);
-  }
-
-  deleteTeamConfig(id: string): void {
-    this.stmts.deleteTeamConfig.run(id);
   }
 
   // === Session ID ===

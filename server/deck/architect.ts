@@ -10,16 +10,10 @@ import path from "path";
 import fs from "fs";
 import { StreamParser } from "./stream-parser.js";
 import { CodexStreamParser } from "./adapters/codex-stream-parser.js";
-import type {
-  ProjectStructure,
-  MissionPlan,
-  PlannedAgent,
-  StreamEvent,
-  PromptEvent,
-} from "./types.js";
-import type { DeckSettings, RuntimeType } from "../core/types.js";
+import type { ProjectStructure, MissionPlan, PlannedTask, StreamEvent, PromptEvent } from "./types.js";
+import type { DeckSettings } from "../core/types.js";
 
-type PlannerSettings = Pick<DeckSettings, "defaultModel" | "defaultRuntime">;
+type PlannerSettings = Pick<DeckSettings, "defaultRuntime" | "plannerModel" | "explorerModel">;
 
 /** Resolve the claude binary path (same logic as ClaudeAdapter) */
 function resolveClaudePath(): string {
@@ -66,31 +60,15 @@ export async function planMission(
   settings: PlannerSettings,
   onEvent?: (event: StreamEvent) => void
 ): Promise<MissionPlan> {
-  const prompt = buildPrompt(task, project, settings);
-
-  // Not part of the CLI's own stream — the UI wants to show what the
-  // architect was actually asked, same as any other agent's Config tab.
-  onEvent?.({
-    type: "prompt",
-    agentId: "architect",
-    timestamp: new Date().toISOString(),
-    data: { content: prompt },
-  } as PromptEvent);
-
-  const resultText = await callPlanner(prompt, project.root, settings, onEvent);
-
-  return parsePlan(resultText, project, settings);
+  const prompt = buildPlannerPrompt(task, project, settings.explorerModel);
+  emitPrompt(onEvent, prompt, settings.plannerModel, settings.explorerModel);
+  emitProgress(onEvent, "running", settings.plannerModel, settings.explorerModel);
+  const result = await callPlanner(prompt, project.root, settings, onEvent);
+  emitProgress(onEvent, "completed", settings.plannerModel, settings.explorerModel);
+  return parsePlan(parseJson(result, "task graph"), project);
 }
 
-function buildPrompt(
-  task: string,
-  project: ProjectStructure,
-  settings: PlannerSettings
-): string {
-  const { defaultModel: model, defaultRuntime: runtime } = settings;
-  const modelGuidance = runtime === "codex"
-    ? `Use "${model}" as the model for every agent.`
-    : "Use \"sonnet\" as default model. Use \"opus\" only for complex architectural decisions or critical reviews. Use \"haiku\" for simple searches, linting, or formatting tasks.";
+function projectContext(project: ProjectStructure): string {
   const projectCtx = [
     `Project: ${project.name}`,
     `Type: ${project.type}`,
@@ -102,53 +80,60 @@ function buildPrompt(
   ]
     .filter(Boolean)
     .join("\n");
+  return projectCtx;
+}
 
-  return `You are an AI architect that decomposes software tasks into a multi-agent execution plan.
+function buildPlannerPrompt(task: string, project: ProjectStructure, explorerModel: string): string {
+  return `You are the sole planning session for this build task. You own triage, bounded repository exploration, and synthesis.
 
 ## Project Context
-${projectCtx}
+${projectContext(project)}
 
 ## Task
 ${task}
 
-## Instructions
-Before proposing a plan, investigate the codebase with your tools (Read, Grep, Glob) —
-look at the actual files the task will touch, existing conventions, and any related code.
-Briefly narrate what you're checking and why as you go; keep it short (a sentence or two
-per step), this isn't a full code review. This isn't optional busywork — it's how you make
-the plan concrete and correctly scoped instead of guessing from the project summary alone.
-
-Then decompose the task into 2-6 specialized agents. Each agent should have a focused,
-independent task. Consider dependencies between agents — agents that produce outputs needed
-by others should be listed in dependsOn.
-
-Finish with ONLY a JSON object as your last message (no markdown fence needed, no
-explanation after it) with this exact schema:
-{
-  "agents": [
-    {
-      "name": "agent-name",
-      "task": "Detailed task description for the agent",
-      "role": "researcher|implementer|tester|reviewer|devops",
-      "workdir": ".",
-      "model": "${model}",
-      "runtime": "${runtime}",
-      "dependsOn": []
-    }
-  ],
-  "estimatedCost": 0.15,
-  "estimatedTimeMinutes": 5
+## Planning instructions
+1. Triage the request and investigate the repository before composing tasks.
+2. For bounded evidence gathering, use the configured cheap exploration model "${explorerModel}" for narrowly scoped questions. Limit exploration to four questions, and use no more than one additional follow-up round.
+3. Design an executable task graph from that evidence:
+   - Make each task atomic: one clear, independently reviewable outcome with no overlapping ownership.
+   - Keep prompts concrete, scoped to the relevant files or symbols, and include verifiable acceptance criteria.
+   - Prefer parallel root tasks. Add a dependency only when a task needs another task's completed output; never add cosmetic ordering or cycles.
+   - Use complexity for implementation/reasoning scope only; do not include model or runtime selection in a task.
+4. Briefly stream what you are checking as you work, then return ONLY this JSON object: {"tasks":[{"id":"kebab-id","title":"short title","prompt":"# Task\\n...","workdir":".","dependsOn":[],"complexity":"low|medium|high","acceptanceCriteria":["verifiable criterion"]}]}.`;
 }
 
-Rules:
-- Set runtime to "${runtime}" for every agent.
-- ${modelGuidance}
-- workdir should be relative to project root (use "." for root).
-- For monorepos, assign agents to specific package directories when possible.
-- dependsOn contains agent names that must complete before this agent starts.
-- estimatedCost in USD, estimatedTimeMinutes is wall-clock time (agents run in parallel where possible).
-- Agent names should be short, kebab-case identifiers (e.g., "auth-impl", "api-tests").
-- Do NOT create agents for git commit, push, or finalize operations -- those are handled separately by the system.`;
+function emitPrompt(
+  onEvent: ((event: StreamEvent) => void) | undefined,
+  content: string,
+  model: string,
+  explorerModel: string
+): void {
+  onEvent?.({
+    type: "prompt",
+    agentId: "architect",
+    timestamp: new Date().toISOString(),
+    data: { content, stage: "planner", model, explorerModel },
+  } as PromptEvent);
+}
+
+function emitProgress(
+  onEvent: ((event: StreamEvent) => void) | undefined,
+  status: string,
+  model: string,
+  explorerModel: string
+): void {
+  onEvent?.({
+    type: "text",
+    agentId: "architect",
+    timestamp: new Date().toISOString(),
+    data: { planning: { stage: "planner", status, model, explorerModel } },
+  });
+}
+
+function parseJson(text: string, label: string): any {
+  const match = text.trim().match(/```(?:json)?\s*([\s\S]*?)```/) || text.trim().match(/\{[\s\S]*\}/);
+  try { return JSON.parse(match?.[1] || match?.[0] || text); } catch (error) { throw new Error(`Failed to parse ${label} response: ${(error as Error).message}`); }
 }
 
 function callPlanner(
@@ -158,10 +143,10 @@ function callPlanner(
   onEvent?: (event: StreamEvent) => void
 ): Promise<string> {
   if (settings.defaultRuntime === "codex") {
-    return callCodex(prompt, cwd, settings.defaultModel, onEvent);
+    return callCodex(prompt, cwd, settings.plannerModel, onEvent);
   }
 
-  return callClaude(prompt, cwd, settings.defaultModel, onEvent);
+  return callClaude(prompt, cwd, settings.plannerModel, onEvent);
 }
 
 function callClaude(
@@ -352,50 +337,56 @@ function extractCodexResult(output: string): string | null {
   return resultText;
 }
 
-function parsePlan(
-  text: string,
-  project: ProjectStructure,
-  settings: PlannerSettings
-): MissionPlan {
-  const { defaultModel, defaultRuntime } = settings;
-  // Extract JSON from response (handle markdown code blocks)
-  let jsonStr = text.trim();
-  const codeBlockMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if (codeBlockMatch) {
-    jsonStr = codeBlockMatch[1].trim();
+export function parsePlan(raw: unknown, _project?: ProjectStructure): MissionPlan {
+  const candidate = raw as { tasks?: unknown };
+  if (!Array.isArray(candidate.tasks) || candidate.tasks.length === 0) {
+    throw new Error("Planner response must include at least one task");
   }
-
-  // Try to find JSON object
-  const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
-  if (jsonMatch) {
-    jsonStr = jsonMatch[0];
-  }
-
-  try {
-    const raw = JSON.parse(jsonStr);
-
-    const agents: PlannedAgent[] = (raw.agents || []).map((a: any) => ({
-      name: String(a.name || "agent"),
-      task: String(a.task || ""),
-      role: a.role || undefined,
-      workdir: String(a.workdir || "."),
-      model: defaultModel,
-      runtime: defaultRuntime,
-      dependsOn: Array.isArray(a.dependsOn) ? a.dependsOn.map(String) : [],
-    }));
-
-    // Validate: all dependsOn references must exist
-    const names = new Set(agents.map((a) => a.name));
-    for (const agent of agents) {
-      agent.dependsOn = agent.dependsOn.filter((dep) => names.has(dep));
-    }
-
+  const tasks: PlannedTask[] = candidate.tasks.map((value) => {
+    const task = value as Record<string, unknown>;
+    const complexity = String(task.complexity);
+    if (!["low", "medium", "high"].includes(complexity)) throw new Error(`Invalid task complexity: ${complexity}`);
+    if (!Array.isArray(task.acceptanceCriteria) || task.acceptanceCriteria.length === 0) throw new Error(`Task ${String(task.id)} needs acceptance criteria`);
+    const prompt = typeof task.prompt === "string" ? task.prompt : "";
+    if (!prompt.trim()) throw new Error(`Task ${String(task.id)} needs a Markdown prompt`);
     return {
-      agents,
-      estimatedCost: Number(raw.estimatedCost) || 0,
-      estimatedTimeMinutes: Number(raw.estimatedTimeMinutes) || 5,
+      id: String(task.id || "").trim(),
+      title: String(task.title || "").trim(),
+      prompt,
+      workdir: String(task.workdir || ".").trim() || ".",
+      dependsOn: Array.isArray(task.dependsOn) ? task.dependsOn.map(String) : [],
+      complexity: complexity as PlannedTask["complexity"],
+      acceptanceCriteria: task.acceptanceCriteria.map(String).map((criterion) => criterion.trim()).filter(Boolean),
+      model: typeof task.model === "string" && task.model.trim() ? task.model.trim() : undefined,
     };
-  } catch (err) {
-    throw new Error(`Failed to parse architect response as JSON: ${(err as Error).message}`);
+  });
+  validateTaskGraph(tasks);
+  return { tasks };
+}
+
+export function validateTaskGraph(tasks: PlannedTask[]): void {
+  const ids = new Set<string>();
+  for (const task of tasks) {
+    if (!task.id || !task.title) throw new Error("Every task needs an id and title");
+    if (ids.has(task.id)) throw new Error(`Duplicate task id: ${task.id}`);
+    ids.add(task.id);
   }
+  for (const task of tasks) {
+    for (const dependency of task.dependsOn) {
+      if (!ids.has(dependency)) throw new Error(`Task ${task.id} depends on unknown task: ${dependency}`);
+      if (dependency === task.id) throw new Error(`Task ${task.id} cannot depend on itself`);
+    }
+  }
+  const visiting = new Set<string>();
+  const complete = new Set<string>();
+  const visit = (id: string): void => {
+    if (complete.has(id)) return;
+    if (visiting.has(id)) throw new Error(`Dependency cycle detected at task: ${id}`);
+    visiting.add(id);
+    const task = tasks.find((entry) => entry.id === id)!;
+    task.dependsOn.forEach(visit);
+    visiting.delete(id);
+    complete.add(id);
+  };
+  tasks.forEach((task) => visit(task.id));
 }

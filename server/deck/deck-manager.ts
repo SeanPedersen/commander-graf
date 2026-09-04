@@ -19,7 +19,6 @@ import type {
   SpawnAgentConfig,
   StreamEvent,
   CompleteEvent,
-  TeamConfigSchema,
   RuntimeType,
 } from "./types.js";
 
@@ -47,7 +46,6 @@ export class DeckManager extends EventEmitter {
   private outputBuffers: OutputBufferManager;
   private costEstimator: CostEstimator;
   private contextEstimator: ContextEstimator;
-  private fileTeamConfigs: Map<string, any> = new Map();
 
   constructor(db: Database.Database) {
     super();
@@ -229,79 +227,6 @@ export class DeckManager extends EventEmitter {
   /** Get context window usage for an agent */
   getContextUsage(agentId: string) {
     return this.contextEstimator.getUsage(agentId);
-  }
-
-  // === Team Configs ===
-
-  getTeamConfigs() {
-    return this.store.getAllTeamConfigs();
-  }
-
-  /** Get file-based (YAML) team configs */
-  getFileTeamConfigs(): Map<string, any> {
-    return this.fileTeamConfigs;
-  }
-
-  /** Set file-based team configs (called from team-file-loader) */
-  setFileTeamConfigs(configs: Map<string, any>): void {
-    this.fileTeamConfigs = configs;
-  }
-
-  createTeamConfig(name: string, description: string, configJson: string) {
-    return this.store.createTeamConfig(name, description, configJson);
-  }
-
-  updateTeamConfig(id: string, name: string, description: string, configJson: string) {
-    return this.store.updateTeamConfig(id, name, description, configJson);
-  }
-
-  deleteTeamConfig(id: string) {
-    return this.store.deleteTeamConfig(id);
-  }
-
-  /** Launch all agents from a team config (DB or file-based) */
-  launchTeam(teamConfigId: string): DeckAgent[] {
-    let parsed: TeamConfigSchema;
-
-    // Check file-based configs first
-    const fileConfig = this.fileTeamConfigs.get(teamConfigId);
-    if (fileConfig) {
-      parsed = fileConfig;
-    } else {
-      const config = this.store.getTeamConfig(teamConfigId);
-      if (!config) throw new Error(`Team config ${teamConfigId} not found`);
-      try {
-        parsed = JSON.parse(config.config_json);
-      } catch {
-        throw new Error("Invalid team config JSON");
-      }
-    }
-
-    // Check budget if set
-    if (parsed.settings?.max_budget_usd) {
-      const budgetCheck = this.costEstimator.checkBudget(parsed.settings.max_budget_usd);
-      if (budgetCheck.exceeded) {
-        throw new Error(
-          `Team budget exceeded: $${budgetCheck.totalEstimated.toFixed(2)} >= $${parsed.settings.max_budget_usd}`
-        );
-      }
-    }
-
-    const agents: DeckAgent[] = [];
-    for (const agentDef of parsed.agents) {
-      const agent = this.spawnAgent({
-        name: agentDef.name,
-        prompt: agentDef.prompt,
-        model: agentDef.model,
-        runtime: agentDef.runtime,
-        workspace: agentDef.workspace,
-        agent_type: agentDef.agent_type || "general",
-        team_config_id: teamConfigId,
-      });
-      agents.push(agent);
-    }
-
-    return agents;
   }
 
   // === Agent-State Bridge (read-only) ===

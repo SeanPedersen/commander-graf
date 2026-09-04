@@ -1,6 +1,6 @@
 /**
  * Settings - Configuration page for Agent Deck.
- * Settings form, MCP server list, team templates.
+ * Settings form and model-routing configuration.
  */
 
 import { useState, useEffect } from "react";
@@ -17,14 +17,11 @@ interface DeckSettings {
   maxBudgetUsd: number;
   defaultModel: string;
   defaultRuntime: RuntimeType;
-}
-
-interface TeamConfig {
-  id: string;
-  name: string;
-  description: string;
-  config_json: string;
-  source?: "db" | "file";
+  plannerModel: string;
+  explorerModel: string;
+  lowComplexityModel: string;
+  mediumComplexityModel: string;
+  highComplexityModel: string;
 }
 
 export function Settings() {
@@ -33,8 +30,8 @@ export function Settings() {
     maxBudgetUsd: 10,
     defaultModel: "sonnet",
     defaultRuntime: "claude-code",
+    plannerModel: "sonnet", explorerModel: "haiku", lowComplexityModel: "haiku", mediumComplexityModel: "sonnet", highComplexityModel: "opus",
   });
-  const [teams, setTeams] = useState<TeamConfig[]>([]);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -47,6 +44,11 @@ export function Settings() {
         ...currentSettings,
         defaultRuntime: runtime,
         defaultModel: getRuntimeModel(runtime, currentSettings.defaultModel),
+        plannerModel: getRuntimeModel(runtime, currentSettings.plannerModel),
+        explorerModel: getRuntimeModel(runtime, currentSettings.explorerModel),
+        lowComplexityModel: getRuntimeModel(runtime, currentSettings.lowComplexityModel),
+        mediumComplexityModel: getRuntimeModel(runtime, currentSettings.mediumComplexityModel),
+        highComplexityModel: getRuntimeModel(runtime, currentSettings.highComplexityModel),
       };
     });
   };
@@ -54,13 +56,9 @@ export function Settings() {
   useEffect(() => {
     async function load() {
       try {
-        const [settingsRes, teamsRes] = await Promise.all([
-          fetch(`${API_BASE}/settings`),
-          fetch(`${API_BASE}/teams`),
-        ]);
+        const settingsRes = await fetch(`${API_BASE}/settings`);
 
         if (settingsRes.ok) setSettings(await settingsRes.json());
-        if (teamsRes.ok) setTeams(await teamsRes.json());
       } catch {
         // Retain the local defaults when the API is unavailable.
       }
@@ -139,6 +137,13 @@ export function Settings() {
               </div>
             </div>
 
+            <div>
+              <label className="text-[10px] uppercase text-deck-muted block mb-2">Model routing</label>
+              <div className="grid grid-cols-2 gap-3">
+                {([['plannerModel', 'Planner'], ['explorerModel', 'Explorer'], ['lowComplexityModel', 'Low complexity'], ['mediumComplexityModel', 'Medium complexity'], ['highComplexityModel', 'High complexity']] as const).map(([key, label]) => <label key={key} className="text-xs text-deck-text-dim">{label}<select value={settings[key]} onChange={(e) => setSettings({ ...settings, [key]: e.target.value })} className="mt-1 w-full text-xs px-3 py-2 bg-deck-surface-2 border border-deck-border rounded text-deck-text">{modelOptions.map((model) => <option key={model.value} value={model.value}>{model.label}</option>)}</select></label>)}
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-[10px] uppercase text-deck-muted block mb-1">
@@ -190,59 +195,6 @@ export function Settings() {
               </button>
             </div>
           </div>
-        </section>
-
-        {/* Team Templates */}
-        <section>
-          <h2 className="text-sm font-semibold text-deck-text-bright mb-4">
-            Team Templates
-          </h2>
-          {teams.length === 0 ? (
-            <div className="bg-deck-surface rounded-lg border border-deck-border p-8 text-center">
-              <p className="text-xs text-deck-muted">
-                No team templates found. Create one from the Command Center or
-                add YAML files to team-configs/.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {teams.map((team) => {
-                let agentCount = 0;
-                try {
-                  agentCount =
-                    JSON.parse(team.config_json).agents?.length || 0;
-                } catch {}
-
-                return (
-                  <div
-                    key={team.id}
-                    className="bg-deck-surface rounded-lg border border-deck-border p-4 flex items-center justify-between"
-                  >
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-medium text-deck-text-bright">
-                          {team.name}
-                        </span>
-                        {team.source === "file" && (
-                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-deck-thinking/15 text-deck-thinking font-medium">
-                            YAML
-                          </span>
-                        )}
-                      </div>
-                      {team.description && (
-                        <p className="text-[10px] text-deck-text-dim mt-0.5">
-                          {team.description}
-                        </p>
-                      )}
-                      <span className="text-[10px] text-deck-muted">
-                        {agentCount} {agentCount === 1 ? "agent" : "agents"}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
         </section>
 
         {/* Keyboard Shortcuts */}

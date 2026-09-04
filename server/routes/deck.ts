@@ -10,6 +10,9 @@ import type { WorkflowExecutor } from "../deck/workflow-executor.js";
 import type { WorkspaceManager } from "../core/workspace-manager.js";
 import { DeckStore } from "../core/db.js";
 import { scanProject } from "../deck/project-scanner.js";
+import { resolveSettings } from "../core/config-resolver.js";
+import { validateTaskGraph } from "../deck/architect.js";
+import type { RuntimeType } from "../core/types.js";
 
 // Sub-routers
 import { createProjectRouter } from "./project.js";
@@ -120,113 +123,6 @@ export function createDeckRouter(
     }
   });
 
-  // === Team Configs ===
-
-  /** List team configs (merged: DB + YAML file-based) */
-  router.get("/teams", (_req, res) => {
-    try {
-      const dbTeams = deckManager.getTeamConfigs();
-      const fileConfigs = deckManager.getFileTeamConfigs();
-
-      // Convert file configs to API format
-      const fileTeams = Array.from(fileConfigs.entries()).map(([id, config]) => ({
-        id,
-        name: config.name,
-        description: config.description || "",
-        config_json: JSON.stringify(config),
-        source: "file" as const,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }));
-
-      // DB teams have source: "db"
-      const allTeams = [
-        ...fileTeams,
-        ...dbTeams.map((t: any) => ({ ...t, source: "db" })),
-      ];
-      res.json(allTeams);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  /** Reload YAML team configs */
-  router.post("/teams/reload", async (_req, res) => {
-    try {
-      const path = await import("path");
-      const { fileURLToPath } = await import("url");
-      const { loadTeamConfigs, fileConfigsToMap } = await import("../deck/team-file-loader.js");
-
-      const __dirname = path.dirname(fileURLToPath(import.meta.url));
-      const configDir = path.join(__dirname, "../../team-configs");
-      const configs = await loadTeamConfigs(configDir);
-      deckManager.setFileTeamConfigs(fileConfigsToMap(configs));
-      res.json({ ok: true, count: configs.length });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  /** Create team config */
-  router.post("/teams", (req, res) => {
-    try {
-      const { name, description, config_json } = req.body;
-      if (!name || !config_json) {
-        return res
-          .status(400)
-          .json({ error: "name and config_json are required" });
-      }
-      const team = deckManager.createTeamConfig(
-        name,
-        description || "",
-        typeof config_json === "string"
-          ? config_json
-          : JSON.stringify(config_json)
-      );
-      res.status(201).json(team);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  /** Update team config */
-  router.put("/teams/:id", (req, res) => {
-    try {
-      const { name, description, config_json } = req.body;
-      deckManager.updateTeamConfig(
-        req.params.id,
-        name,
-        description || "",
-        typeof config_json === "string"
-          ? config_json
-          : JSON.stringify(config_json)
-      );
-      res.json({ ok: true });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  /** Delete team config */
-  router.delete("/teams/:id", (req, res) => {
-    try {
-      deckManager.deleteTeamConfig(req.params.id);
-      res.json({ ok: true });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  /** Launch all agents in a team */
-  router.post("/teams/:id/launch", (req, res) => {
-    try {
-      const agents = deckManager.launchTeam(req.params.id);
-      res.status(201).json(agents);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
   // === Sessions ===
 
   /** List past sessions */
@@ -320,9 +216,10 @@ export function createDeckRouter(
         return res.status(500).json({ error: "Workflow executor not initialized" });
       }
       const { plan, name, projectRoot, workspaceId, planId } = req.body;
-      if (!plan || !plan.agents) {
-        return res.status(400).json({ error: "plan with agents is required" });
+      if (!plan || (!plan.tasks && !plan.agents)) {
+        return res.status(400).json({ error: "plan with tasks is required" });
       }
+      if (plan.tasks) validateTaskGraph(plan.tasks);
 
       let root = projectRoot || process.cwd();
       if (workspaceId && workspaceManager) {
@@ -334,7 +231,16 @@ export function createDeckRouter(
         plan,
         name || "Mission",
         root,
-        workspaceId
+        workspaceId,
+        resolveSettings(root, {
+          defaultModel: store.getAllSettings().defaultModel,
+          defaultRuntime: store.getAllSettings().defaultRuntime as RuntimeType | undefined,
+          plannerModel: store.getAllSettings().plannerModel,
+          explorerModel: store.getAllSettings().explorerModel,
+          lowComplexityModel: store.getAllSettings().lowComplexityModel,
+          mediumComplexityModel: store.getAllSettings().mediumComplexityModel,
+          highComplexityModel: store.getAllSettings().highComplexityModel,
+        })
       );
 
       // The plan is now a real running workflow — drop the pending-plan row.

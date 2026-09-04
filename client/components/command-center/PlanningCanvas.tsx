@@ -25,34 +25,23 @@ import { canvasColors, type CanvasColors } from "../../styles/canvas-colors";
 // ─── Types ──────────────────────────────────────────
 
 export interface PlannedAgent {
-  name: string;
-  task: string;
-  role?: string;
+  id: string;
+  title: string;
+  prompt: string;
   workdir: string;
-  model: string;
-  runtime?: string;
   dependsOn: string[];
+  complexity: "low" | "medium" | "high";
+  acceptanceCriteria: string[];
+  /** Explicit pre-launch model override; absent uses complexity routing. */
+  model?: string;
 }
 
 export interface MissionPlan {
-  agents: PlannedAgent[];
-  estimatedCost: number;
-  estimatedTimeMinutes: number;
-}
-
-/** An extra node rendered alongside the plan — the architect. It feeds every
- *  root agent (no other dependency) but isn't part of the plan's own stats
- *  or launch payload. */
-export interface ExtraPlanNode {
-  agent: PlannedAgent;
-  status: string;
+  tasks: PlannedAgent[];
 }
 
 interface PlanningCanvasProps {
   plan: MissionPlan;
-  /** True while the architect agent itself is still running (plan is a stand-in single node). */
-  isPlanning?: boolean;
-  extraNode?: ExtraPlanNode;
   onLaunch: () => void;
   onReplan: () => void;
   onSelectNode: (name: string) => void;
@@ -66,54 +55,38 @@ const nodeTypes: NodeTypes = { agentNode: AgentNode as any };
 
 function layoutDag(
   agents: PlannedAgent[],
-  colors: CanvasColors,
-  isPlanning: boolean,
-  extraNode?: ExtraPlanNode
+  colors: CanvasColors
 ): { nodes: Node[]; edges: Edge[] } {
   const g = new dagre.graphlib.Graph();
   g.setDefaultEdgeLabel(() => ({}));
   g.setGraph({ rankdir: "TB", nodesep: 40, ranksep: 60 });
 
-  const allAgents = extraNode ? [extraNode.agent, ...agents] : agents;
-  for (const agent of allAgents) {
-    g.setNode(agent.name, { width: NODE_WIDTH, height: NODE_HEIGHT });
+  for (const agent of agents) {
+    g.setNode(agent.id, { width: NODE_WIDTH, height: NODE_HEIGHT });
   }
 
   const depEdges: { source: string; target: string }[] = [];
   for (const agent of agents) {
     for (const dep of agent.dependsOn) {
-      depEdges.push({ source: dep, target: agent.name });
-    }
-  }
-  if (extraNode) {
-    for (const agent of agents) {
-      if (agent.dependsOn.length === 0) {
-        depEdges.push({ source: extraNode.agent.name, target: agent.name });
-      }
+      depEdges.push({ source: dep, target: agent.id });
     }
   }
   for (const e of depEdges) g.setEdge(e.source, e.target);
   dagre.layout(g);
 
-  const nodes: Node[] = allAgents.map((agent) => {
-    const pos = g.node(agent.name);
-    const status =
-      agent === extraNode?.agent
-        ? extraNode.status
-        : isPlanning
-          ? "running"
-          : "pending";
+  const nodes: Node[] = agents.map((agent) => {
+    const pos = g.node(agent.id);
     return {
-      id: agent.name,
+      id: agent.id,
       type: "agentNode",
       position: { x: pos.x - NODE_WIDTH / 2, y: pos.y - NODE_HEIGHT / 2 },
       data: {
-        name: agent.name,
-        task: agent.task,
-        role: agent.role,
+        name: agent.title,
+        task: agent.prompt,
+        role: agent.complexity,
         workdir: agent.workdir,
-        model: agent.model,
-        status,
+        model: agent.complexity,
+        status: "pending",
         cost: 0,
       } as AgentNodeData,
     };
@@ -140,8 +113,6 @@ function layoutDag(
 
 export function PlanningCanvas({
   plan,
-  isPlanning,
-  extraNode,
   onLaunch,
   onReplan,
   onSelectNode,
@@ -150,8 +121,8 @@ export function PlanningCanvas({
   const colors = canvasColors(theme);
 
   const { nodes: initialNodes, edges: initialEdges } = useMemo(
-    () => layoutDag(plan.agents, colors, !!isPlanning, extraNode),
-    [plan, colors, isPlanning, extraNode]
+    () => layoutDag(plan.tasks, colors),
+    [plan, colors]
   );
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
@@ -192,53 +163,30 @@ export function PlanningCanvas({
 
         {/* Estimate badge */}
         <div className="absolute top-3 left-3 bg-deck-surface/90 backdrop-blur rounded-lg border border-deck-border px-3 py-2 flex items-center gap-4 text-xs">
-          {isPlanning ? (
-            <span className="flex items-center gap-1.5 text-deck-text-dim">
-              <span className="w-1.5 h-1.5 rounded-full bg-deck-success animate-pulse" />
-              Planning…
-            </span>
-          ) : (
-            <>
-              <span className="text-deck-text-dim">
-                {plan.agents.length} agents
-              </span>
-              <span className="font-mono text-deck-success">
-                Est. ${plan.estimatedCost.toFixed(2)}
-              </span>
-              <span className="text-deck-text-dim">
-                ~{plan.estimatedTimeMinutes}min
-              </span>
-            </>
-          )}
+          <span className="text-deck-text-dim">{plan.tasks.length} tasks</span>
         </div>
       </div>
 
       {/* Action bar */}
       <div className="shrink-0 px-4 py-3 border-t border-deck-border bg-deck-surface flex items-center justify-between">
-        {isPlanning ? (
-          <span className="text-xs text-deck-text-dim mx-auto">
-            Click the architect node to watch it work — the task graph appears here once it's done.
-          </span>
-        ) : (
-          <>
-            <button
-              onClick={onReplan}
-              className="px-3 py-2 text-xs border border-deck-border rounded-lg text-deck-text-dim hover:text-deck-text hover:bg-deck-surface-2 transition-colors"
-            >
-              Re-plan
-            </button>
-            <button
-              onClick={onLaunch}
-              className="px-5 py-2 text-xs bg-deck-success text-white rounded-lg hover:bg-deck-success-hover transition-colors font-medium flex items-center gap-2"
-            >
+        <>
+          <button
+            onClick={onReplan}
+            className="px-3 py-2 text-xs border border-deck-border rounded-lg text-deck-text-dim hover:text-deck-text hover:bg-deck-surface-2 transition-colors"
+          >
+            Re-plan
+          </button>
+          <button
+            onClick={onLaunch}
+            className="px-5 py-2 text-xs bg-deck-success text-white rounded-lg hover:bg-deck-success-hover transition-colors font-medium flex items-center gap-2"
+          >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               Launch
-            </button>
-          </>
-        )}
+          </button>
+        </>
       </div>
     </div>
   );

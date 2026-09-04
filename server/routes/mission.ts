@@ -6,7 +6,7 @@ import { Router } from "express";
 import { v4 as uuidv4 } from "uuid";
 import { scanProject } from "../core/project-scanner.js";
 import { resolveSettings } from "../core/config-resolver.js";
-import { planMission } from "../deck/architect.js";
+import { planMission, validateTaskGraph } from "../deck/architect.js";
 import type { DeckManager } from "../deck/deck-manager.js";
 import type { WorkflowExecutor } from "../deck/workflow-executor.js";
 import type { WorkspaceManager } from "../core/workspace-manager.js";
@@ -56,6 +56,11 @@ export function createMissionRouter(
       const settings = resolveSettings(scanPath, {
         defaultModel: storedSettings.defaultModel,
         defaultRuntime: toRuntimeType(storedSettings.defaultRuntime),
+        plannerModel: storedSettings.plannerModel,
+        explorerModel: storedSettings.explorerModel,
+        lowComplexityModel: storedSettings.lowComplexityModel,
+        mediumComplexityModel: storedSettings.mediumComplexityModel,
+        highComplexityModel: storedSettings.highComplexityModel,
       });
       const plan = await planMission(task, structure, settings, (event) => {
         deckManager.emit("agent:stream", planId, event);
@@ -134,16 +139,26 @@ export function createMissionRouter(
         return res.status(500).json({ error: "Workflow executor not initialized" });
       }
       const { plan, name, projectRoot, workspaceId } = req.body;
-      if (!plan || !plan.agents) {
-        return res.status(400).json({ error: "plan with agents is required" });
+      if (!plan || (!plan.tasks && !plan.agents)) {
+        return res.status(400).json({ error: "plan with tasks is required" });
       }
+      if (plan.tasks) validateTaskGraph(plan.tasks);
 
       const root = resolveWorkspacePath(workspaceId, projectRoot);
       const workflow = workflowExecutor.launchWorkflow(
         plan,
         name || "Mission",
         root,
-        workspaceId
+        workspaceId,
+        resolveSettings(root, {
+          defaultModel: deckManager.getStore().getAllSettings().defaultModel,
+          defaultRuntime: toRuntimeType(deckManager.getStore().getAllSettings().defaultRuntime),
+          plannerModel: deckManager.getStore().getAllSettings().plannerModel,
+          explorerModel: deckManager.getStore().getAllSettings().explorerModel,
+          lowComplexityModel: deckManager.getStore().getAllSettings().lowComplexityModel,
+          mediumComplexityModel: deckManager.getStore().getAllSettings().mediumComplexityModel,
+          highComplexityModel: deckManager.getStore().getAllSettings().highComplexityModel,
+        })
       );
       res.status(201).json(workflow);
     } catch (error: any) {

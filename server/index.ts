@@ -15,7 +15,6 @@ import { DeckStore } from "./core/db.js";
 import { DeckManager } from "./deck/deck-manager.js";
 import { SessionRecovery } from "./deck/session-recovery.js";
 import { LiteLLMBridge } from "./deck/litellm-bridge.js";
-import { loadTeamConfigs, fileConfigsToMap } from "./deck/team-file-loader.js";
 import { WorkflowExecutor } from "./deck/workflow-executor.js";
 import { WorkspaceManager } from "./core/workspace-manager.js";
 import { createDeckRouter } from "./routes/deck.js";
@@ -77,19 +76,6 @@ const crashed = sessionRecovery.getCrashedSessions();
 if (crashed.length > 0) {
   console.log(`[Deck] Found ${crashed.length} crashed/shutdown sessions (resumable)`);
 }
-
-// Load YAML team configs
-const teamConfigDir = process.env.DECK_TEAM_CONFIGS || path.join(__dirname, "../team-configs");
-loadTeamConfigs(teamConfigDir)
-  .then((configs) => {
-    if (configs.length > 0) {
-      deckManager.setFileTeamConfigs(fileConfigsToMap(configs));
-      console.log(`[Deck] Loaded ${configs.length} YAML team configs`);
-    }
-  })
-  .catch((err) => {
-    console.warn(`[Deck] Failed to load YAML team configs:`, err.message);
-  });
 
 // Check LiteLLM
 const litellmBridge = new LiteLLMBridge();

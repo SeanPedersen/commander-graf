@@ -87,7 +87,6 @@ export function resolveAgentConfig(
     agent_type: base.agent_type || projectDefaults.agent_type || "general",
     runtime: base.runtime || projectDefaults.runtime || settings.defaultRuntime,
     interactive: base.interactive ?? projectDefaults.interactive ?? false,
-    team_config_id: base.team_config_id,
     resumeSessionId: base.resumeSessionId,
     maxBudgetUsd: base.maxBudgetUsd ?? projectDefaults.maxBudgetUsd ?? settings.maxBudgetUsd,
     maxRetries: base.maxRetries ?? projectDefaults.maxRetries ?? 0,
@@ -143,6 +142,11 @@ function applySettingsLayer(
   if (layer.idleThresholdSeconds !== undefined) target.idleThresholdSeconds = layer.idleThresholdSeconds;
   if (layer.defaultModel !== undefined) target.defaultModel = layer.defaultModel;
   if (layer.defaultRuntime !== undefined) target.defaultRuntime = layer.defaultRuntime;
+  if (layer.plannerModel !== undefined) target.plannerModel = layer.plannerModel;
+  if (layer.explorerModel !== undefined) target.explorerModel = layer.explorerModel;
+  if (layer.lowComplexityModel !== undefined) target.lowComplexityModel = layer.lowComplexityModel;
+  if (layer.mediumComplexityModel !== undefined) target.mediumComplexityModel = layer.mediumComplexityModel;
+  if (layer.highComplexityModel !== undefined) target.highComplexityModel = layer.highComplexityModel;
   if (layer.autoOpenBrowser !== undefined) target.autoOpenBrowser = layer.autoOpenBrowser;
   if (layer.theme !== undefined) target.theme = layer.theme;
 }
@@ -154,6 +158,11 @@ function applyEnvLayer(target: DeckSettings): void {
     DECK_IDLE_THRESHOLD_SECONDS: (v) => { target.idleThresholdSeconds = parseInt(v, 10); },
     DECK_DEFAULT_MODEL: (v) => { target.defaultModel = v; },
     DECK_DEFAULT_RUNTIME: (v) => { target.defaultRuntime = v as DeckSettings["defaultRuntime"]; },
+    DECK_PLANNER_MODEL: (v) => { target.plannerModel = v; },
+    DECK_EXPLORER_MODEL: (v) => { target.explorerModel = v; },
+    DECK_LOW_COMPLEXITY_MODEL: (v) => { target.lowComplexityModel = v; },
+    DECK_MEDIUM_COMPLEXITY_MODEL: (v) => { target.mediumComplexityModel = v; },
+    DECK_HIGH_COMPLEXITY_MODEL: (v) => { target.highComplexityModel = v; },
     DECK_AUTO_OPEN_BROWSER: (v) => { target.autoOpenBrowser = v === "true" || v === "1"; },
     DECK_THEME: (v) => { target.theme = v as DeckSettings["theme"]; },
   };
