@@ -4,7 +4,7 @@ import { create } from "zustand";
 
 export type Page = "home" | "command-center" | "history" | "settings";
 export type Theme = "dark" | "light";
-export type CommandCenterMode = "empty" | "planning" | "reviewing" | "running" | "completed" | "finalizing";
+export type CommandCenterMode = "empty" | "planning" | "reviewing" | "running" | "completed" | "finalizing" | "error";
 export type AgentStatus =
   | "pending"
   | "queued"

@@ -95,10 +95,14 @@ ${task}
 ## Planning instructions
 1. Triage the request and investigate the repository before composing tasks.
 2. For bounded evidence gathering, use the configured cheap exploration model "${explorerModel}" for narrowly scoped questions. Limit exploration to four questions, and use no more than one additional follow-up round.
-3. Design an executable task graph from that evidence:
+3. Design an executable task graph from that evidence, optimizing for wall-clock time (maximum parallel width, minimum chain depth):
    - Make each task atomic: one clear, independently reviewable outcome with no overlapping ownership.
    - Keep prompts concrete, scoped to the relevant files or symbols, and include verifiable acceptance criteria.
-   - Prefer parallel root tasks. Add a dependency only when a task needs another task's completed output; never add cosmetic ordering or cycles.
+   - Prefer parallel root tasks. Add a dependency only when a task needs another task's completed, on-disk output to run — never for a task that merely calls into an API another task defines.
+   - Break chains formed by shared APIs: when task B would only depend on task A because B calls functions/types A defines (e.g. a UI consuming a rules engine, a client consuming a schema), fix that API's exact shape (signatures, types, module layout, file paths) once, then paste that identical spec verbatim into the prompt of every sibling task that builds against it — including A's own prompt. Siblings run in parallel with no visibility into each other's work, so a spec only one of them sees is a spec the others will silently diverge from.
+   - Make each sibling independently verifiable against the shared spec, not just at final integration: its acceptance criteria must let it be checked in isolation (e.g. unit tests against the documented interface, or a minimal stub/fake implementing the contract if the real dependency isn't done yet), so a mismatch surfaces in that task's own review instead of only at the end.
+   - Converge fan-outs with one final integration task: once several sibling tasks are each built against a shared contract, add a single lightweight final task that depends on all of them, wires the real pieces together, and runs an end-to-end acceptance check — instead of making one of the siblings depend on all the others.
+   - Never add cosmetic ordering or cycles.
    - Use complexity for implementation/reasoning scope only; do not include model or runtime selection in a task.
 4. Briefly stream what you are checking as you work, then return ONLY this JSON object: {"tasks":[{"id":"kebab-id","title":"short title","prompt":"# Task\\n...","workdir":".","dependsOn":[],"complexity":"low|medium|high","acceptanceCriteria":["verifiable criterion"]}]}.`;
 }
@@ -131,9 +135,80 @@ function emitProgress(
   });
 }
 
-function parseJson(text: string, label: string): any {
-  const match = text.trim().match(/```(?:json)?\s*([\s\S]*?)```/) || text.trim().match(/\{[\s\S]*\}/);
-  try { return JSON.parse(match?.[1] || match?.[0] || text); } catch (error) { throw new Error(`Failed to parse ${label} response: ${(error as Error).message}`); }
+/** Forces a validated StructuredOutput tool call (see callClaude) instead of
+ *  free-text JSON — necessary because task prompts routinely embed their own
+ *  ```-fenced code samples (e.g. a shared API spec pasted verbatim per
+ *  sibling task per the planner's fan-out rules), which any fence-matching
+ *  heuristic over free text risks mistaking for the real delimiter. */
+const JSON_SCHEMA_TASK_GRAPH = {
+  type: "object",
+  properties: {
+    tasks: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          title: { type: "string" },
+          prompt: { type: "string" },
+          workdir: { type: "string" },
+          dependsOn: { type: "array", items: { type: "string" } },
+          complexity: { type: "string", enum: ["low", "medium", "high"] },
+          acceptanceCriteria: { type: "array", items: { type: "string" } },
+        },
+        required: ["id", "title", "prompt", "workdir", "dependsOn", "complexity", "acceptanceCriteria"],
+      },
+    },
+  },
+  required: ["tasks"],
+};
+
+/** Scans for the first top-level JSON object, tracking brace depth while
+ *  skipping over string contents (so embedded braces/backticks inside a
+ *  string value — e.g. a task prompt quoting its own ```-fenced API spec —
+ *  can never be mistaken for structural characters). */
+function extractJsonObject(text: string): string {
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*)```/);
+  const candidate = fenced?.[1] ?? text;
+  const start = candidate.indexOf("{");
+  if (start === -1) return candidate;
+
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let i = start; i < candidate.length; i++) {
+    const ch = candidate[i];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (ch === "\\") escaped = true;
+      else if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') inString = true;
+    else if (ch === "{") depth++;
+    else if (ch === "}" && --depth === 0) return candidate.slice(start, i + 1);
+  }
+  return candidate.slice(start);
+}
+
+export function parseJson(text: string, label: string): any {
+  const trimmed = text.trim();
+  // --json-schema's structured_output is stringified as-is and is already
+  // valid JSON — it must never be run through fence/brace extraction below,
+  // since a literal ``` inside one of its own string fields (a task prompt
+  // quoting its shared API spec) would otherwise be mistaken for a real
+  // fence and corrupt perfectly valid input.
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    // Not directly parseable — likely free text wrapping the JSON (a plain
+    // text response, or a fallback runtime without schema-forced output).
+  }
+  try {
+    return JSON.parse(extractJsonObject(trimmed));
+  } catch (error) {
+    throw new Error(`Failed to parse ${label} response: ${(error as Error).message}`);
+  }
 }
 
 function callPlanner(
@@ -167,6 +242,8 @@ function callClaude(
       "--verbose",
       "--model",
       model,
+      "--json-schema",
+      JSON.stringify(JSON_SCHEMA_TASK_GRAPH),
     ];
 
     const envPath = [
@@ -222,6 +299,13 @@ function callClaude(
           if (event.result) {
             resultText = event.result;
           }
+          // --json-schema forces a validated StructuredOutput tool call —
+          // this is already schema-conformant JSON, so it takes priority
+          // over the raw result/text-block fallbacks below (which are prone
+          // to truncating on markdown fences nested inside task prompts).
+          if (event.structured_output !== undefined) {
+            resultText = JSON.stringify(event.structured_output);
+          }
           // Also check for assistant message content blocks
           if (event.type === "assistant" && event.message?.content) {
             for (const block of event.message.content) {
@@ -254,14 +338,30 @@ function callClaude(
       }
     });
 
-    // Planning now involves real tool calls (Read/Grep/Glob) to investigate the
-    // codebase, not just a single completion, so give it more room than a plain
-    // one-shot prompt would need.
+    // Planning involves real tool calls (Read/Grep/Glob) plus extended
+    // thinking, not just a single completion — a real run against this
+    // prompt measured ~162s of API time with 10k+ thinking tokens, so a
+    // 180s cap leaves too little margin before a slower run gets SIGKILLed
+    // mid-plan with no error surfaced.
     const timeout = setTimeout(() => {
       proc.kill("SIGKILL");
-      reject(new Error("Claude CLI timed out after 180s"));
-    }, 180000);
+      reject(new Error("Claude CLI timed out after 300s"));
+    }, 300000);
   });
+}
+
+/** Codex takes its schema as a file path rather than inline JSON (unlike
+ *  Claude's --json-schema) — write it once per call into a scratch dir and
+ *  remove that dir once the process is done with it, on every exit path. */
+function writeTaskGraphSchemaFile(): string {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "agent-deck-schema-"));
+  const file = path.join(dir, "task-graph.schema.json");
+  fs.writeFileSync(file, JSON.stringify(JSON_SCHEMA_TASK_GRAPH));
+  return file;
+}
+
+function cleanupSchemaFile(file: string): void {
+  try { fs.rmSync(path.dirname(file), { recursive: true, force: true }); } catch {}
 }
 
 function callCodex(
@@ -274,11 +374,17 @@ function callCodex(
     const parser = onEvent ? new CodexStreamParser("architect") : null;
     parser?.on("event", (event: StreamEvent) => onEvent!(event));
 
-    const proc = spawn(CODEX_BIN, ["exec", "--json", "--cd", cwd, "--model", model, prompt], {
-      cwd,
-      env: process.env,
-      stdio: ["ignore", "pipe", "pipe"],
-    });
+    const schemaFile = writeTaskGraphSchemaFile();
+
+    const proc = spawn(
+      CODEX_BIN,
+      ["exec", "--json", "--cd", cwd, "--model", model, "--output-schema", schemaFile, prompt],
+      {
+        cwd,
+        env: process.env,
+        stdio: ["ignore", "pipe", "pipe"],
+      }
+    );
 
     let output = "";
 
@@ -293,12 +399,14 @@ function callCodex(
     });
 
     proc.on("error", (error) => {
+      cleanupSchemaFile(schemaFile);
       reject(new Error(`Failed to spawn Codex CLI: ${error.message}`));
     });
 
     proc.on("exit", (code) => {
       clearTimeout(timeout);
       parser?.flush();
+      cleanupSchemaFile(schemaFile);
 
       const resultText = extractCodexResult(output);
       if (code === 0 && resultText) {
@@ -311,8 +419,9 @@ function callCodex(
 
     const timeout = setTimeout(() => {
       proc.kill("SIGKILL");
-      reject(new Error("Codex CLI timed out after 180s"));
-    }, 180000);
+      cleanupSchemaFile(schemaFile);
+      reject(new Error("Codex CLI timed out after 300s"));
+    }, 300000);
   });
 }
 

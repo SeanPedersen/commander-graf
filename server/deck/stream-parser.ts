@@ -13,6 +13,7 @@ import type {
   ToolCallEvent,
   ToolResultEvent,
   ThinkingEvent,
+  HeartbeatEvent,
   CompleteEvent,
   ErrorEvent,
   InitEvent,
@@ -94,6 +95,18 @@ export class StreamParser extends EventEmitter {
             agentId: this.agentId,
             timestamp: new Date().toISOString(),
             data: { sessionId: event.session_id },
+          });
+        }
+        // Non-interactive `--print` mode never emits content_block_delta
+        // (no incremental text/thinking) and redacts thinking blocks to
+        // empty strings — this token tally is the only sign of life during
+        // an extended-thinking stretch, which can run well over a minute.
+        if (event.subtype === "thinking_tokens" && typeof event.estimated_tokens === "number") {
+          this.emitEvent<HeartbeatEvent>({
+            type: "heartbeat",
+            agentId: this.agentId,
+            timestamp: new Date().toISOString(),
+            data: { estimatedTokens: event.estimated_tokens },
           });
         }
         break;

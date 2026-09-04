@@ -42,11 +42,26 @@ function promptFrom(event: StreamEvent): PlannerPrompt | null {
   return event.data as PlannerPrompt;
 }
 
+function latestHeartbeatTokens(events: StreamEvent[]): number | null {
+  for (let i = events.length - 1; i >= 0; i--) {
+    const event = events[i];
+    if (event.type === "heartbeat") return (event.data as { estimatedTokens: number }).estimatedTokens;
+    // Any visible output since the last heartbeat means the model moved on.
+    if (liveContent(event) || event.type === "tool_call" || event.type === "tool_result") return null;
+  }
+  return null;
+}
+
 function currentStage(events: StreamEvent[], complete: boolean): string {
   if (complete) return "Task graph synthesized";
   const progress = [...events].reverse().map(progressFrom).find(Boolean);
-  if (!progress) return "Starting planner…";
-  return progress.status === "running" ? "Planning task graph" : `${STAGE_LABEL[progress.stage]} ${progress.status}`;
+  const stageLabel = !progress
+    ? "Starting planner…"
+    : progress.status === "running"
+      ? "Planning task graph"
+      : `${STAGE_LABEL[progress.stage]} ${progress.status}`;
+  const thinkingTokens = latestHeartbeatTokens(events);
+  return thinkingTokens ? `${stageLabel} — thinking… (~${thinkingTokens.toLocaleString()} tokens)` : stageLabel;
 }
 
 function liveContent(event: StreamEvent): string | null {

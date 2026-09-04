@@ -101,6 +101,7 @@ export type StreamEventType =
   | "tool_call"
   | "tool_result"
   | "thinking"
+  | "heartbeat"
   | "complete"
   | "error"
   | "prompt";
@@ -135,6 +136,15 @@ export interface ToolResultEvent extends StreamEvent {
 export interface ThinkingEvent extends StreamEvent {
   type: "thinking";
   data: { content: string; isPartial?: boolean };
+}
+
+/** The CLI's non-interactive stream-json mode never emits incremental
+ *  thinking/text deltas — extended-thinking blocks arrive redacted (empty
+ *  `thinking` text). This is the only progress signal available during
+ *  those silent stretches, so it's surfaced rather than dropped. */
+export interface HeartbeatEvent extends StreamEvent {
+  type: "heartbeat";
+  data: { estimatedTokens: number };
 }
 
 /** Synthetic, non-CLI event: the full instructions handed to the architect,
@@ -175,6 +185,7 @@ export interface ClaudeCliEvent {
   type: string;
   subtype?: string;
   session_id?: string;
+  estimated_tokens?: number;
   message?: {
     role: string;
     content: Array<{

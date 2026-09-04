@@ -82,6 +82,7 @@ export function CommandCenter({
   const [task, setTask] = useState("");
   const [plan, setPlan] = useState<MissionPlan | null>(null);
   const [planId, setPlanId] = useState<string | null>(null);
+  const [planError, setPlanError] = useState<string | null>(null);
   const [pendingPlan, setPendingPlan] = useState<PendingPlan | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -133,6 +134,7 @@ export function CommandCenter({
     if (!task.trim()) return;
 
     setPlan(null);
+    setPlanError(null);
     setPendingPlan(null);
     setActiveWorkflow(null);
     clearOutputEvents();
@@ -168,7 +170,8 @@ export function CommandCenter({
       setMode("reviewing");
     } catch (err: any) {
       addToast(`Planning failed: ${err.message}`);
-      setMode("empty");
+      setPlanError(err.message || "Unknown error");
+      setMode("error");
     } finally {
       sendJsonMessage({ type: "deck:agent:unfocus", agentId: newPlanId });
     }
@@ -230,6 +233,7 @@ export function CommandCenter({
     }
     setPlan(null);
     setPlanId(null);
+    setPlanError(null);
     setActiveWorkflow(null);
     clearOutputEvents();
     setMode("empty");
@@ -276,6 +280,36 @@ export function CommandCenter({
             onUpdatePlannedAgent={handleUpdatePlannedAgent}
           />
         )}
+      </div>
+    );
+  }
+
+  // Error keeps the planner activity visible so the last streamed output
+  // (tool calls, thinking) stays available alongside the failure reason.
+  if (mode === "error") {
+    return (
+      <div className="flex h-full">
+        <PlannerActivity planId={planId} task={task} complete />
+        <div className="flex-1 flex items-center justify-center bg-deck-bg text-center px-6">
+          <div className="max-w-md">
+            <p className="text-sm font-medium text-deck-error">Planning failed</p>
+            <p className="mt-2 text-xs text-deck-text-dim whitespace-pre-wrap break-words">{planError}</p>
+            <div className="mt-4 flex justify-center gap-2">
+              <button
+                onClick={handlePlan}
+                className="px-3 py-1.5 text-xs rounded bg-deck-accent text-white hover:opacity-90"
+              >
+                Try again
+              </button>
+              <button
+                onClick={handleReset}
+                className="px-3 py-1.5 text-xs rounded border border-deck-border text-deck-text hover:bg-deck-surface-2"
+              >
+                Start over
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
