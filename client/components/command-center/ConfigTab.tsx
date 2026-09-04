@@ -13,14 +13,14 @@ import { getModelOptions, type RuntimeType } from "../../models";
 const API_BASE = "/api/deck";
 
 interface RoutingSettings {
-  defaultRuntime: RuntimeType;
+  activeRuntimes: RuntimeType[];
   lowComplexityModel: string;
   mediumComplexityModel: string;
   highComplexityModel: string;
 }
 
 const DEFAULT_ROUTING: RoutingSettings = {
-  defaultRuntime: "claude-code",
+  activeRuntimes: ["claude-code"],
   lowComplexityModel: "haiku",
   mediumComplexityModel: "sonnet",
   highComplexityModel: "opus",
@@ -88,7 +88,7 @@ export function ConfigTab({
   const workdir = config.workdir || plannedAgent?.workdir || ".";
   const routedModel = plannedAgent ? matchedModel(plannedAgent.complexity, routing) : "";
   const model = agent?.model || config.model || plannedAgent?.model || routedModel;
-  const modelOptions = useMemo(() => getModelOptions(routing.defaultRuntime), [routing.defaultRuntime]);
+  const modelOptions = useMemo(() => getModelOptions(routing.activeRuntimes), [routing.activeRuntimes]);
   const availableModels = useMemo(
     () => modelOptions.some((option) => option.value === model)
       ? modelOptions
@@ -106,7 +106,7 @@ export function ConfigTab({
       .then((settings) => {
         if (cancelled || !settings) return;
         setRouting({
-          defaultRuntime: settings.defaultRuntime || DEFAULT_ROUTING.defaultRuntime,
+          activeRuntimes: settings.activeRuntimes || DEFAULT_ROUTING.activeRuntimes,
           lowComplexityModel: settings.lowComplexityModel || DEFAULT_ROUTING.lowComplexityModel,
           mediumComplexityModel: settings.mediumComplexityModel || DEFAULT_ROUTING.mediumComplexityModel,
           highComplexityModel: settings.highComplexityModel || DEFAULT_ROUTING.highComplexityModel,

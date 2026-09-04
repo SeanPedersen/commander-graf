@@ -22,6 +22,7 @@ import type {
   DeckAgent,
 } from "./types.js";
 import { modelForComplexity } from "./model-router.js";
+import { runtimeForModel } from "./runtime-registry.js";
 
 const MAX_CONCURRENT_AGENTS = parseInt(process.env.DECK_MAX_AGENTS || "10", 10);
 
@@ -59,7 +60,7 @@ export class WorkflowExecutor extends EventEmitter {
           workdir: task.workdir,
           dependsOn: task.dependsOn,
           model: task.model || (settings ? modelForComplexity(task.complexity, settings) : undefined),
-          runtime: settings?.defaultRuntime,
+          runtime: runtimeForModel(task.model || (settings ? modelForComplexity(task.complexity, settings) : "")),
           agentType: `task:${task.complexity}`,
         }))
       : (plan.agents || []).map((agent) => ({
@@ -82,7 +83,7 @@ export class WorkflowExecutor extends EventEmitter {
           name: entry.name,
           prompt: entry.prompt,
           model: entry.model || "sonnet",
-          runtime: entry.runtime || "claude-code",
+          runtime: entry.runtime || runtimeForModel(entry.model || "") || "claude-code",
           workspace: entry.workdir === "."
             ? projectRoot
             : `${projectRoot}/${entry.workdir}`,

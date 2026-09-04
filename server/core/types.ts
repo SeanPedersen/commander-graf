@@ -19,7 +19,7 @@ export type AgentStatus =
   | "cancelled"
   | "dead";
 
-export type RuntimeType = "claude-code" | "codex" | "gemini-cli" | "litellm";
+export type RuntimeType = "claude-code" | "codex" | "opencode";
 
 // =====================================================
 // Agent Config (used for spawn + persistence)
@@ -367,8 +367,7 @@ export interface DeckSettings {
   maxAgents: number;
   maxBudgetUsd: number;
   idleThresholdSeconds: number;
-  defaultModel: string;
-  defaultRuntime: RuntimeType;
+  activeRuntimes: RuntimeType[];
   plannerModel: string;
   explorerModel: string;
   lowComplexityModel: string;
@@ -382,8 +381,7 @@ export const DEFAULT_SETTINGS: DeckSettings = {
   maxAgents: 10,
   maxBudgetUsd: 50,
   idleThresholdSeconds: 300,
-  defaultModel: "sonnet",
-  defaultRuntime: "claude-code",
+  activeRuntimes: ["claude-code"],
   plannerModel: "sonnet",
   explorerModel: "haiku",
   lowComplexityModel: "haiku",

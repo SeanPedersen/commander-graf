@@ -1,43 +1,30 @@
 /**
- * Runtime-specific model options used throughout the client.
+ * Model catalog and runtime ownership used by settings and plan configuration.
  */
 
-export type RuntimeType = "claude-code" | "codex" | "gemini-cli" | "litellm";
+export type RuntimeType = "claude-code" | "codex" | "opencode";
 
 export interface ModelOption {
   value: string;
   label: string;
+  runtime: RuntimeType;
 }
+
+const models = (runtime: RuntimeType, values: ReadonlyArray<[string, string]>): ModelOption[] =>
+  values.map(([value, label]) => ({ value, label, runtime }));
 
 export const MODELS_BY_RUNTIME: Record<RuntimeType, readonly ModelOption[]> = {
-  "claude-code": [
-    { value: "haiku", label: "Haiku 4.5" },
-    { value: "sonnet", label: "Sonnet 4.6" },
-    { value: "opus", label: "Opus 4.6" },
-  ],
-  codex: [
-    { value: "gpt-5.6-sol", label: "GPT-5.6 Sol" },
-    { value: "gpt-5.6-terra", label: "GPT-5.6 Terra" },
-    { value: "gpt-5.6-luna", label: "GPT-5.6 Luna" },
-  ],
-  "gemini-cli": [
-    { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
-    { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro" },
-  ],
-  litellm: [
-    { value: "haiku", label: "Haiku 4.5" },
-    { value: "sonnet", label: "Sonnet 4.6" },
-    { value: "opus", label: "Opus 4.6" },
-  ],
+  "claude-code": models("claude-code", [["haiku", "Claude Haiku 4.5"], ["sonnet", "Claude Sonnet 4.6"], ["opus", "Claude Opus 4.6"]]),
+  codex: models("codex", [["gpt-5.6-sol", "GPT-5.6 Sol"], ["gpt-5.6-terra", "GPT-5.6 Terra"], ["gpt-5.6-luna", "GPT-5.6 Luna"]]),
+  opencode: models("opencode", [["opencode/big-pickle", "Big Pickle (free)"], ["opencode/gpt-5-nano", "GPT-5 Nano (free)"], ["opencode/glm-4.7-free", "GLM 4.7 (free)"], ["opencode/minimax-m2.1-free", "MiniMax M2.1 (free)"]]),
 };
 
-export function getModelOptions(runtime: string): readonly ModelOption[] {
-  return MODELS_BY_RUNTIME[runtime as RuntimeType] ?? MODELS_BY_RUNTIME["claude-code"];
+export function getModelOptions(activeRuntimes: readonly RuntimeType[]): readonly ModelOption[] {
+  return activeRuntimes.flatMap((runtime) => MODELS_BY_RUNTIME[runtime] ?? []);
 }
 
-export function getRuntimeModel(runtime: string, currentModel: string): string {
-  const options = getModelOptions(runtime);
-  return options.some((model) => model.value === currentModel)
-    ? currentModel
-    : options[0].value;
+export function runtimeForModel(model: string): RuntimeType | undefined {
+  return (Object.keys(MODELS_BY_RUNTIME) as RuntimeType[]).find((runtime) =>
+    MODELS_BY_RUNTIME[runtime].some((option) => option.value === model)
+  );
 }

@@ -19,12 +19,8 @@ export function createAdapter(
       return new ClaudeAdapter(agentId);
     case "codex":
       return new CodexAdapter(agentId);
-    case "gemini-cli":
-      throw new Error("Gemini CLI adapter not yet implemented");
-    case "litellm": {
-      const proxyUrl = options?.litellmProxyUrl || process.env.LITELLM_PROXY_URL || "http://localhost:4000";
-      return new LiteLLMAdapter(agentId, proxyUrl);
-    }
+    case "opencode":
+      throw new Error("OpenCode adapter is not available yet");
     default:
       throw new Error(`Unknown runtime: ${runtime}`);
   }
@@ -32,4 +28,3 @@ export function createAdapter(
 
 export { ClaudeAdapter } from "./claude-adapter.js";
 export { CodexAdapter } from "./codex-adapter.js";
-export { LiteLLMAdapter } from "./litellm-adapter.js";

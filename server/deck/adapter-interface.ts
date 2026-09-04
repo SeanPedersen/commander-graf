@@ -6,9 +6,9 @@
  */
 
 import type { EventEmitter } from "events";
-import type { SpawnAgentConfig, StreamEvent, CompleteEvent } from "./types.js";
+import type { SpawnAgentConfig, StreamEvent, CompleteEvent, RuntimeType } from "./types.js";
 
-export type RuntimeType = "claude-code" | "codex" | "gemini-cli" | "litellm";
+export type { RuntimeType } from "./types.js";
 
 export interface AdapterEvents {
   stream: [StreamEvent];

@@ -82,10 +82,10 @@ export function resolveAgentConfig(
   return {
     name: base.name || "agent",
     prompt: base.prompt || "",
-    model: base.model || projectDefaults.model || settings.defaultModel,
+    model: base.model || projectDefaults.model || settings.mediumComplexityModel,
     workspace: base.workspace || projectDefaults.workspace || projectRoot || process.cwd(),
     agent_type: base.agent_type || projectDefaults.agent_type || "general",
-    runtime: base.runtime || projectDefaults.runtime || settings.defaultRuntime,
+    runtime: base.runtime || projectDefaults.runtime || "claude-code",
     interactive: base.interactive ?? projectDefaults.interactive ?? false,
     resumeSessionId: base.resumeSessionId,
     maxBudgetUsd: base.maxBudgetUsd ?? projectDefaults.maxBudgetUsd ?? settings.maxBudgetUsd,
@@ -140,8 +140,7 @@ function applySettingsLayer(
   if (layer.maxAgents !== undefined) target.maxAgents = layer.maxAgents;
   if (layer.maxBudgetUsd !== undefined) target.maxBudgetUsd = layer.maxBudgetUsd;
   if (layer.idleThresholdSeconds !== undefined) target.idleThresholdSeconds = layer.idleThresholdSeconds;
-  if (layer.defaultModel !== undefined) target.defaultModel = layer.defaultModel;
-  if (layer.defaultRuntime !== undefined) target.defaultRuntime = layer.defaultRuntime;
+  if (layer.activeRuntimes !== undefined) target.activeRuntimes = layer.activeRuntimes;
   if (layer.plannerModel !== undefined) target.plannerModel = layer.plannerModel;
   if (layer.explorerModel !== undefined) target.explorerModel = layer.explorerModel;
   if (layer.lowComplexityModel !== undefined) target.lowComplexityModel = layer.lowComplexityModel;
@@ -156,8 +155,7 @@ function applyEnvLayer(target: DeckSettings): void {
     DECK_MAX_AGENTS: (v) => { target.maxAgents = parseInt(v, 10); },
     DECK_MAX_BUDGET_USD: (v) => { target.maxBudgetUsd = parseFloat(v); },
     DECK_IDLE_THRESHOLD_SECONDS: (v) => { target.idleThresholdSeconds = parseInt(v, 10); },
-    DECK_DEFAULT_MODEL: (v) => { target.defaultModel = v; },
-    DECK_DEFAULT_RUNTIME: (v) => { target.defaultRuntime = v as DeckSettings["defaultRuntime"]; },
+    DECK_ACTIVE_RUNTIMES: (v) => { target.activeRuntimes = v.split(",").filter(Boolean) as DeckSettings["activeRuntimes"]; },
     DECK_PLANNER_MODEL: (v) => { target.plannerModel = v; },
     DECK_EXPLORER_MODEL: (v) => { target.explorerModel = v; },
     DECK_LOW_COMPLEXITY_MODEL: (v) => { target.lowComplexityModel = v; },
