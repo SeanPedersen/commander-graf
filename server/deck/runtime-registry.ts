@@ -15,23 +15,36 @@ const RUNTIMES: ReadonlyArray<Pick<RuntimeInfo, "id" | "label"> & { command: str
   { id: "opencode", label: "OpenCode", command: "opencode" },
 ];
 
+const RUNTIME_LABELS: Record<RuntimeType, string> = Object.fromEntries(
+  RUNTIMES.map(({ id, label }) => [id, label])
+) as Record<RuntimeType, string>;
+
+const withRuntimePrefix = (
+  runtime: RuntimeType,
+  values: ReadonlyArray<[string, string]>
+): ReadonlyArray<{ value: string; label: string }> =>
+  values.map(([value, label]) => ({ value, label: `${RUNTIME_LABELS[runtime]}: ${label}` }));
+
 export const MODELS_BY_RUNTIME: Record<RuntimeType, ReadonlyArray<{ value: string; label: string }>> = {
-  "claude-code": [
-    { value: "haiku", label: "Claude Haiku 4.5" },
-    { value: "sonnet", label: "Claude Sonnet 4.6" },
-    { value: "opus", label: "Claude Opus 4.6" },
-  ],
-  codex: [
-    { value: "gpt-5.6-sol", label: "GPT-5.6 Sol" },
-    { value: "gpt-5.6-terra", label: "GPT-5.6 Terra" },
-    { value: "gpt-5.6-luna", label: "GPT-5.6 Luna" },
-  ],
-  opencode: [
-    { value: "opencode/big-pickle", label: "Big Pickle (free)" },
-    { value: "opencode/gpt-5-nano", label: "GPT-5 Nano (free)" },
-    { value: "opencode/glm-4.7-free", label: "GLM 4.7 (free)" },
-    { value: "opencode/minimax-m2.1-free", label: "MiniMax M2.1 (free)" },
-  ],
+  "claude-code": withRuntimePrefix("claude-code", [
+    ["haiku", "Claude Haiku 4.5"],
+    ["sonnet", "Claude Sonnet 4.6"],
+    ["opus", "Claude Opus 4.6"],
+  ]),
+  codex: withRuntimePrefix("codex", [
+    ["gpt-5.6-sol", "GPT-5.6 Sol"],
+    ["gpt-5.6-terra", "GPT-5.6 Terra"],
+    ["gpt-5.6-luna", "GPT-5.6 Luna"],
+  ]),
+  opencode: withRuntimePrefix("opencode", [
+    ["opencode/mimo-v2.5-free", "MiMo-V2.5 (free)"],
+    ["opencode/hy3-free", "Hy3 (free)"],
+    ["opencode/ling-3.0-flash-fin-free", "Ling 3.0 Flash Fin (free)"],
+    ["opencode/nemotron-3-ultra-free", "Nemotron 3 Ultra (free)"],
+    ["opencode/nemotron-3.5-lightning-free", "Nemotron 3.5 Lightning (free)"],
+    ["opencode/big-pickle", "Big Pickle (stealth)"],
+    ["opencode/muse-spark-1.2-contributor-free", "Muse Spark 1.2 Contributor (free)"],
+  ]),
 };
 
 function isCommandAvailable(command: string): boolean {
