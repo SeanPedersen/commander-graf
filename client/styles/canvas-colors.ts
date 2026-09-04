@@ -14,7 +14,6 @@ export interface CanvasColors {
   dot: string;
   edge: string;
   edgeRunning: string;
-  edgeFailed: string;
 }
 
 const CANVAS_COLORS: Record<Theme, CanvasColors> = {
@@ -22,13 +21,11 @@ const CANVAS_COLORS: Record<Theme, CanvasColors> = {
     dot: "#1a1a25",
     edge: "#3a3a4a",
     edgeRunning: "#22c55e",
-    edgeFailed: "#ef4444",
   },
   light: {
     dot: "#cdcdda",
     edge: "#a8a8ba",
     edgeRunning: "#15803d",
-    edgeFailed: "#b91c1c",
   },
 };
 

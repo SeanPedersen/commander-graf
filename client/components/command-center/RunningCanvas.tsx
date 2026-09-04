@@ -24,11 +24,30 @@ import type { WorkflowState } from "../../stores/deck-store";
 
 const NODE_WIDTH = 256;
 const NODE_HEIGHT = 120;
+const EDGE_STROKE_WIDTH = 1.5;
 const nodeTypes: NodeTypes = { agentNode: AgentNode as any };
 
 interface RunningCanvasProps {
   onSelectNode: (name: string) => void;
   onAbort: () => void;
+}
+
+interface EdgeVisualState {
+  animated: boolean;
+  color: string;
+}
+
+/** An edge reflects its prerequisite: blocked, working, or successfully released. */
+function edgeVisualState(sourceStatus: string | undefined, colors: CanvasColors): EdgeVisualState {
+  if (sourceStatus === "running" || sourceStatus === "retrying") {
+    return { animated: true, color: colors.edgeRunning };
+  }
+
+  if (sourceStatus === "success") {
+    return { animated: false, color: colors.edgeRunning };
+  }
+
+  return { animated: false, color: colors.edge };
 }
 
 function buildDag(
@@ -68,27 +87,23 @@ function buildDag(
     };
   });
 
-  const edges: Edge[] = workflow.edges.map((e) => ({
-    id: `${e.source}->${e.target}`,
-    source: e.source,
-    target: e.target,
-    animated: workflow.nodes[e.target]?.status === "running",
-    markerEnd: {
-      type: MarkerType.ArrowClosed,
-      width: 12,
-      height: 12,
-      color: colors.edge,
-    },
-    style: {
-      stroke:
-        workflow.nodes[e.target]?.status === "running"
-          ? colors.edgeRunning
-          : workflow.nodes[e.target]?.status === "failed"
-            ? colors.edgeFailed
-            : colors.edge,
-      strokeWidth: 1.5,
-    },
-  }));
+  const edges: Edge[] = workflow.edges.map((e) => {
+    const visualState = edgeVisualState(workflow.nodes[e.source]?.status, colors);
+
+    return {
+      id: `${e.source}->${e.target}`,
+      source: e.source,
+      target: e.target,
+      animated: visualState.animated,
+      markerEnd: {
+        type: MarkerType.ArrowClosed,
+        width: 12,
+        height: 12,
+        color: visualState.color,
+      },
+      style: { stroke: visualState.color, strokeWidth: EDGE_STROKE_WIDTH },
+    };
+  });
 
   return { nodes, edges };
 }
