@@ -115,8 +115,12 @@ LITELLM_PROXY_URL=http://localhost:4000 npx agent-deck     # Connect
 | `PORT` | `3002` | Server port |
 | `DECK_MAX_AGENTS` | `10` | Max concurrent agents |
 | `DECK_IDLE_THRESHOLD_SECONDS` | `300` | Idle detection threshold |
+| `DECK_CODEX_ALLOW_NETWORK` | — | Set to `1` to run Codex agents with unrestricted sandbox access so tools such as `uv sync` can resolve fresh dependencies. |
+| `DECK_CODEX_SANDBOX` | `workspace-write` | Codex sandbox when network access is not enabled: `read-only`, `workspace-write`, or `danger-full-access`. |
 | `LITELLM_PROXY_URL` | — | LiteLLM proxy URL |
 | `AGENT_STATE_DB` | `~/.claude/agent-state.db` | Agent-state bridge (read-only) |
+
+Codex reports token usage rather than billed USD in its CLI event stream. Agent Deck stores those tokens and shows an API-equivalent estimate using the selected model's published per-token rates; it is not an invoice for a ChatGPT plan.
 
 ## API
 

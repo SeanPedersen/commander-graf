@@ -168,6 +168,7 @@ export interface CompleteEvent extends StreamEvent {
     sessionId?: string;
     costUsd?: number;
     inputTokens?: number;
+    cachedInputTokens?: number;
     outputTokens?: number;
   };
 }

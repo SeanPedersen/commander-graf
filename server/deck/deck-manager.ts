@@ -11,7 +11,7 @@ import os from "os";
 import { DeckStore } from "./deck-db.js";
 import { createAdapter } from "./adapters/index.js";
 import { OutputBufferManager } from "./output-buffer.js";
-import { CostEstimator } from "./cost-estimator.js";
+import { calculateTokenCost, CostEstimator } from "./cost-estimator.js";
 import { ContextEstimator } from "./context-estimator.js";
 import type { AgentAdapter } from "./adapter-interface.js";
 import type {
@@ -344,32 +344,45 @@ export class DeckManager extends EventEmitter {
       data.status === "error" ? "dead" : "completed"
     );
 
-    // Update cost estimator with actual values
-    if (data.costUsd) {
+    const inputTokens = data.inputTokens || 0;
+    const cachedInputTokens = data.cachedInputTokens || 0;
+    const outputTokens = data.outputTokens || 0;
+    const costUsd = data.costUsd ?? calculateTokenCost(
+      agent.model,
+      inputTokens,
+      outputTokens,
+      cachedInputTokens,
+    );
+    const hasUsage = inputTokens > 0 || outputTokens > 0;
+
+    // Codex emits token usage but no billed USD amount. Persist an
+    // API-equivalent estimate whenever usage is available.
+    if (data.costUsd !== undefined || hasUsage) {
       this.costEstimator.setActualCost(
         agentId,
-        data.costUsd,
-        data.inputTokens || 0,
-        data.outputTokens || 0
+        costUsd,
+        inputTokens,
+        outputTokens
       );
     }
 
-    // Record cost
-    if (data.costUsd) {
+    // Record completion usage even when the provider does not send billed USD.
+    if (data.costUsd !== undefined || hasUsage) {
       const updatedAgent = this.store.getAgent(agentId);
       if (updatedAgent) {
         this.store.updateAgentCost(
           agentId,
-          data.costUsd,
-          data.inputTokens || 0,
-          data.outputTokens || 0
+          costUsd,
+          inputTokens,
+          outputTokens
         );
         this.store.addCostSnapshot(
           agentId,
           updatedAgent.model,
-          data.costUsd,
-          data.inputTokens || 0,
-          data.outputTokens || 0
+          costUsd,
+          inputTokens,
+          outputTokens,
+          cachedInputTokens,
         );
 
         this.store.addEvent(
@@ -378,12 +391,12 @@ export class DeckManager extends EventEmitter {
           undefined,
           JSON.stringify({
             status: data.status,
-            costUsd: data.costUsd,
+            costUsd,
             durationMs: data.durationMs,
           }),
-          data.costUsd,
-          data.inputTokens,
-          data.outputTokens
+          costUsd,
+          inputTokens,
+          outputTokens
         );
       }
     }
@@ -403,9 +416,9 @@ export class DeckManager extends EventEmitter {
         interactive: agent.interactive,
       }),
       output_snapshot: outputSnapshot || undefined,
-      total_cost_usd: (agent.total_cost_usd || 0) + (data.costUsd || 0),
-      total_input_tokens: (agent.total_input_tokens || 0) + (data.inputTokens || 0),
-      total_output_tokens: (agent.total_output_tokens || 0) + (data.outputTokens || 0),
+      total_cost_usd: (agent.total_cost_usd || 0) + costUsd,
+      total_input_tokens: (agent.total_input_tokens || 0) + inputTokens,
+      total_output_tokens: (agent.total_output_tokens || 0) + outputTokens,
     });
 
     // Clean up adapter and buffers

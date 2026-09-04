@@ -5,8 +5,14 @@
  * then replaces with actual cost when available.
  */
 
-/** Pricing per million tokens (USD) */
-const MODEL_PRICING: Record<string, { input: number; output: number }> = {
+/** API-equivalent prices per million tokens (USD). */
+export interface ModelPricing {
+  input: number;
+  cachedInput?: number;
+  output: number;
+}
+
+const MODEL_PRICING: Record<string, ModelPricing> = {
   sonnet: { input: 3, output: 15 },
   opus: { input: 15, output: 75 },
   haiku: { input: 0.25, output: 1.25 },
@@ -14,7 +20,27 @@ const MODEL_PRICING: Record<string, { input: number; output: number }> = {
   "claude-sonnet-4-6": { input: 3, output: 15 },
   "claude-opus-4-6": { input: 15, output: 75 },
   "claude-haiku-4-5": { input: 0.25, output: 1.25 },
+  "gpt-5.6-sol": { input: 4, cachedInput: 0.4, output: 24 },
+  "gpt-5.6-terra": { input: 2, cachedInput: 0.2, output: 12 },
+  "gpt-5.6-luna": { input: 0.5, cachedInput: 0.05, output: 3 },
 };
+
+export function calculateTokenCost(
+  model: string,
+  inputTokens: number,
+  outputTokens: number,
+  cachedInputTokens = 0,
+): number {
+  const pricing = MODEL_PRICING[model];
+  if (!pricing) return 0;
+
+  const cachedTokens = Math.min(Math.max(cachedInputTokens, 0), Math.max(inputTokens, 0));
+  const uncachedInputTokens = Math.max(inputTokens, 0) - cachedTokens;
+  const inputCost = (uncachedInputTokens / 1_000_000) * pricing.input;
+  const cachedInputCost = (cachedTokens / 1_000_000) * (pricing.cachedInput ?? pricing.input);
+  const outputCost = (Math.max(outputTokens, 0) / 1_000_000) * pricing.output;
+  return inputCost + cachedInputCost + outputCost;
+}
 
 export interface CostEstimate {
   agentId: string;

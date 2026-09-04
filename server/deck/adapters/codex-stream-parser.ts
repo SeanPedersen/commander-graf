@@ -24,19 +24,30 @@ type CodexItem = {
   aggregated_output?: string;
 };
 
+type CodexUsage = {
+  input_tokens?: number;
+  cached_input_tokens?: number;
+  output_tokens?: number;
+};
+
 type CodexEvent = {
   type?: string;
   thread_id?: string;
   error?: { message?: string } | string;
   message?: string;
   item?: CodexItem;
-  usage?: { input_tokens?: number; output_tokens?: number };
+  usage?: CodexUsage;
+  duration_ms?: number;
+  info?: { total_token_usage?: CodexUsage };
+  turn_token_usage?: CodexUsage;
+  payload?: CodexEvent;
 };
 
 export class CodexStreamParser extends EventEmitter {
   private buffer = "";
   private threadId: string | null = null;
   private completed = false;
+  private latestUsage: CodexUsage | undefined;
 
   constructor(private readonly agentId: string) {
     super();
@@ -66,6 +77,7 @@ export class CodexStreamParser extends EventEmitter {
     this.buffer = "";
     this.threadId = null;
     this.completed = false;
+    this.latestUsage = undefined;
   }
 
   private parseLine(line: string): void {
@@ -79,6 +91,14 @@ export class CodexStreamParser extends EventEmitter {
   }
 
   private handleEvent(event: CodexEvent): void {
+    if (event.payload) {
+      this.handleEvent({
+        ...event.payload,
+        thread_id: event.payload.thread_id || event.thread_id,
+      });
+      return;
+    }
+
     if (event.type === "thread.started" && event.thread_id) {
       this.threadId = event.thread_id;
       this.emitEvent<InitEvent>({
@@ -97,7 +117,18 @@ export class CodexStreamParser extends EventEmitter {
 
     if (event.type === "turn.completed") {
       this.completed = true;
-      this.emitComplete("success", undefined, event.usage);
+      this.emitComplete("success", undefined, event.usage || this.latestUsage);
+      return;
+    }
+
+    if (event.type === "token_count" || event.type === "token_usage_record") {
+      this.latestUsage = event.turn_token_usage || event.info?.total_token_usage || event.usage || this.latestUsage;
+      return;
+    }
+
+    if (event.type === "task_complete") {
+      this.completed = true;
+      this.emitComplete("success", undefined, this.latestUsage, event.duration_ms);
       return;
     }
 
@@ -107,7 +138,7 @@ export class CodexStreamParser extends EventEmitter {
         : event.error?.message || event.message || "Codex execution failed";
       this.emitError("CODEX_EXEC_ERROR", message);
       this.completed = true;
-      this.emitComplete("error", message, event.usage);
+      this.emitComplete("error", message, event.usage || this.latestUsage);
     }
   }
 
@@ -155,7 +186,8 @@ export class CodexStreamParser extends EventEmitter {
   private emitComplete(
     status: "success" | "error",
     error: string | undefined,
-    usage: CodexEvent["usage"],
+    usage: CodexUsage | undefined,
+    durationMs?: number,
   ): void {
     this.emitEvent<CompleteEvent>({
       type: "complete",
@@ -164,8 +196,10 @@ export class CodexStreamParser extends EventEmitter {
       data: {
         status,
         error,
+        durationMs,
         sessionId: this.threadId || undefined,
         inputTokens: usage?.input_tokens,
+        cachedInputTokens: usage?.cached_input_tokens,
         outputTokens: usage?.output_tokens,
       },
     });

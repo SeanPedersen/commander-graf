@@ -46,7 +46,7 @@ export class CodexAdapter extends EventEmitter implements AgentAdapter {
 
     this.process = spawn(resolveCodexPath(), this.buildArgs(config), {
       cwd: config.workspace || process.cwd(),
-      env: process.env,
+      env: this.buildEnvironment(config),
       stdio: ["ignore", "pipe", "pipe"],
     });
     this.pid = this.process.pid || null;
@@ -97,12 +97,15 @@ export class CodexAdapter extends EventEmitter implements AgentAdapter {
   }
 
   private buildArgs(config: SpawnAgentConfig): string[] {
+    const sandbox = process.env.DECK_CODEX_ALLOW_NETWORK === "1"
+      ? "danger-full-access"
+      : process.env.DECK_CODEX_SANDBOX || "workspace-write";
     const args = [
       "exec",
       "--json",
       "--skip-git-repo-check",
       "--cd", config.workspace || process.cwd(),
-      "--sandbox", process.env.DECK_CODEX_SANDBOX || "workspace-write",
+      "--sandbox", sandbox,
     ];
 
     // Current Codex CLI does not allow --approve-for-me with an explicit
@@ -119,6 +122,15 @@ export class CodexAdapter extends EventEmitter implements AgentAdapter {
 
     args.push(config.prompt);
     return args;
+  }
+
+  private buildEnvironment(config: SpawnAgentConfig): NodeJS.ProcessEnv {
+    const workspace = config.workspace || process.cwd();
+    return {
+      ...process.env,
+      ...config.env,
+      UV_CACHE_DIR: config.env?.UV_CACHE_DIR || join(workspace, ".agent-deck", "uv-cache"),
+    };
   }
 
   private handleEvent(event: StreamEvent): void {
