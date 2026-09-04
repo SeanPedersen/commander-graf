@@ -97,9 +97,7 @@ export class CodexAdapter extends EventEmitter implements AgentAdapter {
   }
 
   private buildArgs(config: SpawnAgentConfig): string[] {
-    const sandbox = process.env.DECK_CODEX_ALLOW_NETWORK === "1"
-      ? "danger-full-access"
-      : process.env.DECK_CODEX_SANDBOX || "workspace-write";
+    const sandbox = process.env.DECK_CODEX_SANDBOX || "danger-full-access";
     const args = [
       "exec",
       "--json",
@@ -108,9 +106,9 @@ export class CodexAdapter extends EventEmitter implements AgentAdapter {
       "--sandbox", sandbox,
     ];
 
-    // Current Codex CLI does not allow --approve-for-me with an explicit
-    // --sandbox. Keep the workflow's workspace-write boundary and let the
-    // non-interactive exec command use its sandbox approval behavior.
+    // Codex exec does not allow --approve-for-me with an explicit sandbox.
+    // The unrestricted sandbox lets non-interactive task agents install and
+    // resolve dependencies without waiting for an unavailable approval prompt.
 
     if (config.model && !CLAUDE_MODEL_ALIASES.has(config.model)) {
       args.push("--model", config.model);

@@ -115,8 +115,7 @@ LITELLM_PROXY_URL=http://localhost:4000 npx commander-graf     # Connect
 | `PORT` | `3002` | Server port |
 | `DECK_MAX_AGENTS` | `10` | Max concurrent agents |
 | `DECK_IDLE_THRESHOLD_SECONDS` | `300` | Idle detection threshold |
-| `DECK_CODEX_ALLOW_NETWORK` | — | Set to `1` to run Codex agents with unrestricted sandbox access so tools such as `uv sync` can resolve fresh dependencies. |
-| `DECK_CODEX_SANDBOX` | `workspace-write` | Codex sandbox when network access is not enabled: `read-only`, `workspace-write`, or `danger-full-access`. |
+| `DECK_CODEX_SANDBOX` | `danger-full-access` | Codex task-agent sandbox. Override with `read-only` or `workspace-write` to restrict access. |
 | `LITELLM_PROXY_URL` | — | LiteLLM proxy URL |
 | `AGENT_STATE_DB` | `~/.claude/agent-state.db` | Agent-state bridge (read-only) |
 
