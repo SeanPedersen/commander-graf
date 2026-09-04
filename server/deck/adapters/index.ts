@@ -7,6 +7,7 @@
 import type { AgentAdapter, RuntimeType } from "../adapter-interface.js";
 import { ClaudeAdapter } from "./claude-adapter.js";
 import { CodexAdapter } from "./codex-adapter.js";
+import { OpenCodeAdapter } from "./opencode-adapter.js";
 import { LiteLLMAdapter } from "./litellm-adapter.js";
 
 export function createAdapter(
@@ -20,7 +21,7 @@ export function createAdapter(
     case "codex":
       return new CodexAdapter(agentId);
     case "opencode":
-      throw new Error("OpenCode adapter is not available yet");
+      return new OpenCodeAdapter(agentId);
     default:
       throw new Error(`Unknown runtime: ${runtime}`);
   }
@@ -28,3 +29,4 @@ export function createAdapter(
 
 export { ClaudeAdapter } from "./claude-adapter.js";
 export { CodexAdapter } from "./codex-adapter.js";
+export { OpenCodeAdapter } from "./opencode-adapter.js";
