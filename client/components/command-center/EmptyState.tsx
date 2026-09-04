@@ -32,11 +32,12 @@ export function EmptyState({
   onDiscardPlan,
 }: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center h-full px-8">
-      {/* Project info cards */}
+    <div className="flex flex-col h-full px-8 py-6">
+      {/* Project info cards - prominent at top */}
       {project && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8 w-full max-w-2xl">
+        <div className="flex gap-3 mb-6 w-full max-w-4xl mx-auto">
           <InfoCard label="Project" value={project.name} />
+          <InfoCard label="Dir" value={project.root.split("/").pop() || project.root} />
           <InfoCard label="Type" value={project.framework || project.type} />
           <InfoCard label="Agents" value={project.agentCount} />
           <InfoCard label="MCP Servers" value={project.mcpServerCount} />
@@ -45,7 +46,7 @@ export function EmptyState({
 
       {/* Existing plans (not yet launched) */}
       {pendingPlan && (
-        <div className="w-full max-w-xl mb-8">
+        <div className="w-full max-w-xl mb-6 mx-auto">
           <div className="text-[10px] uppercase text-deck-muted mb-2">
             Existing Plans
           </div>
@@ -77,26 +78,13 @@ export function EmptyState({
       )}
 
       {projectLoading && (
-        <div className="text-xs text-deck-text-dim mb-8">
+        <div className="text-xs text-deck-text-dim mb-6">
           Scanning project...
         </div>
       )}
 
       {/* Hero text */}
-      <div className="text-center mb-6">
-        <svg
-          className="w-10 h-10 mx-auto mb-3 text-deck-muted"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={1}
-            d="M13 10V3L4 14h7v7l9-11h-7z"
-          />
-        </svg>
+      <div className="text-center mb-4">
         <h2 className="text-sm font-semibold text-deck-text-bright mb-1">
           What would you like to build?
         </h2>
@@ -106,33 +94,31 @@ export function EmptyState({
         </p>
       </div>
 
-      {/* Task input */}
-      <div className="w-full max-w-xl flex gap-2">
-        <input
-          type="text"
+      {/* Task input - large textarea */}
+      <div className="w-full max-w-4xl mx-auto flex flex-col gap-3 flex-1">
+        <textarea
           value={task}
           onChange={(e) => setTask(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && task.trim()) onPlan();
+            if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && task.trim()) onPlan();
           }}
-          placeholder="e.g., Add dark mode toggle to the settings page..."
-          className="flex-1 px-4 py-2.5 bg-deck-surface border border-deck-border rounded-lg text-sm text-deck-text placeholder:text-deck-muted focus:outline-none focus:border-deck-accent focus:ring-1 focus:ring-deck-accent/30"
+          placeholder={"Describe what you want to build...\n\nExample:\n- Add a dark mode toggle to the settings page\n- When toggled, persist preference in localStorage\n- Update all components to respect the theme"}
+          className="flex-1 min-h-[180px] w-full px-4 py-3 bg-deck-surface border border-deck-border rounded-lg text-sm text-deck-text placeholder:text-deck-muted focus:outline-none focus:border-deck-accent focus:ring-1 focus:ring-deck-accent/30 resize-none font-mono leading-relaxed"
           autoFocus
         />
-        <button
-          onClick={onPlan}
-          disabled={!task.trim()}
-          className="px-5 py-2.5 bg-deck-accent text-white text-sm rounded-lg hover:bg-deck-accent-hover disabled:opacity-40 disabled:cursor-not-allowed transition-colors font-medium"
-        >
-          Plan
-        </button>
+        <div className="flex items-center justify-between">
+          <p className="text-[10px] text-deck-muted">
+            Cmd+Enter to plan
+          </p>
+          <button
+            onClick={onPlan}
+            disabled={!task.trim()}
+            className="px-5 py-2.5 bg-deck-accent text-white text-sm rounded-lg hover:bg-deck-accent-hover disabled:opacity-40 disabled:cursor-not-allowed transition-colors font-medium"
+          >
+            Plan
+          </button>
+        </div>
       </div>
-
-      {/* Keyboard hint */}
-      <p className="text-[10px] text-deck-muted mt-3">
-        Press Enter to plan. Use 1-9 to select agents. Cmd+1/2/3 to switch
-        pages.
-      </p>
     </div>
   );
 }
