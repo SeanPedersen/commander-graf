@@ -163,7 +163,7 @@ interface DeckStore {
   toggleTheme: () => void;
 }
 
-const THEME_STORAGE_KEY = "agent-deck-theme";
+const THEME_STORAGE_KEY = "commander-graf-theme";
 const LIGHT_QUERY = "(prefers-color-scheme: light)";
 
 /** Only an explicit user choice is stored; anything else means "follow the OS". */

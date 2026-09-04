@@ -7,7 +7,7 @@ interface KeyboardShortcutsConfig {
 }
 
 /**
- * Global keyboard shortcuts for Agent Deck
+ * Global keyboard shortcuts for Commander Graf
  *
  * - Escape: close detail panel
  * - Cmd/Ctrl+N: open spawn dialog

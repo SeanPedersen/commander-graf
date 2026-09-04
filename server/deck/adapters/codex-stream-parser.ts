@@ -1,5 +1,5 @@
 /**
- * Normalizes Codex `exec --json` events for Agent Deck's runtime-neutral UI.
+ * Normalizes Codex `exec --json` events for Commander Graf's runtime-neutral UI.
  */
 
 import { EventEmitter } from "events";

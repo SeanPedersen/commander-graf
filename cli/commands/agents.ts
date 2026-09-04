@@ -1,5 +1,5 @@
 /**
- * agent-deck agents — List all agents
+ * commander-graf agents — List all agents
  */
 
 import type { CliContext } from "../index.js";

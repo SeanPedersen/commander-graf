@@ -1,5 +1,5 @@
 /**
- * Agent Deck v1.0 - Server Entry Point
+ * Commander Graf v1.0 - Server Entry Point
  *
  * Express + WebSocket server with graceful shutdown and auto port.
  */
@@ -91,7 +91,7 @@ if (litellmBridge.isEnabled()) {
 function tryListen(port: number, maxRetries = 5): void {
   server.listen(port, () => {
     console.log(`
-Agent Deck v1.0                
+Commander Graf v1.0
 http://localhost:${port}          
 WebSocket: ws://localhost:${port}/ws
 Dev: http://localhost:5200     

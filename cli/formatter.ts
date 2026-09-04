@@ -1,5 +1,5 @@
 /**
- * Agent Deck CLI - Output Formatter
+ * Commander Graf CLI - Output Formatter
  *
  * Human-readable output with ANSI colors and aligned tables.
  * Respects NO_COLOR env variable.

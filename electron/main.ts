@@ -1,5 +1,5 @@
 /**
- * Agent Deck - Electron Main Process
+ * Commander Graf - Electron Main Process
  *
  * Starts the Express server in-process, then opens a BrowserWindow.
  */
@@ -57,7 +57,7 @@ function createWindow() {
     minHeight: 600,
     titleBarStyle: "hiddenInset",
     trafficLightPosition: { x: 16, y: 16 },
-    title: "Agent Deck",
+    title: "Commander Graf",
     backgroundColor: "#0f0f14",
     show: false,
     webPreferences: {
@@ -179,7 +179,7 @@ app.on("ready", async () => {
 
     createWindow();
   } catch (err) {
-    console.error("Failed to start Agent Deck:", err);
+    console.error("Failed to start Commander Graf:", err);
     app.quit();
   }
 });

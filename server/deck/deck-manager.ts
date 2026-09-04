@@ -1,5 +1,5 @@
 /**
- * Agent Deck - Manager (Core Orchestrator)
+ * Commander Graf - Manager (Core Orchestrator)
  *
  * Manages agent lifecycle: spawn, monitor, kill, event forwarding.
  */

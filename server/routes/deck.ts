@@ -1,5 +1,5 @@
 /**
- * Agent Deck - REST API Routes
+ * Commander Graf - REST API Routes
  *
  * Main router that mounts sub-routers and preserves legacy routes.
  */

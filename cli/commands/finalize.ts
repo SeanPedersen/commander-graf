@@ -1,5 +1,5 @@
 /**
- * agent-deck finalize — View changes and commit
+ * commander-graf finalize — View changes and commit
  */
 
 import type { CliContext } from "../index.js";
@@ -28,5 +28,5 @@ export async function execute({ client, args, flags }: CliContext): Promise<void
     return;
   }
 
-  console.log(`\n${dim("  Commit with: agent-deck commit -m \"your message\"")}`);
+  console.log(`\n${dim("  Commit with: commander-graf commit -m \"your message\"")}`);
 }

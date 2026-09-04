@@ -1,15 +1,15 @@
 #!/usr/bin/env node
 
 /**
- * Agent Deck CLI
+ * Commander Graf CLI
  *
  * Usage:
- *   agent-deck                    Start server (default)
- *   agent-deck serve              Start server (explicit)
- *   agent-deck run <task>         Plan + Launch + Monitor + Finalize
- *   agent-deck plan <task>        Plan a mission
- *   agent-deck status             Show active workflow
- *   agent-deck --help             Show all commands
+ *   commander-graf                    Start server (default)
+ *   commander-graf serve              Start server (explicit)
+ *   commander-graf run <task>         Plan + Launch + Monitor + Finalize
+ *   commander-graf plan <task>        Plan a mission
+ *   commander-graf status             Show active workflow
+ *   commander-graf --help             Show all commands
  */
 
 import { fileURLToPath } from "url";
@@ -26,7 +26,7 @@ const args = process.argv.slice(2);
 
 if (args.includes("--version")) {
   const pkg = await import("../package.json", { with: { type: "json" } });
-  console.log(`agent-deck v${pkg.default.version}`);
+  console.log(`commander-graf v${pkg.default.version}`);
   process.exit(0);
 }
 
@@ -63,7 +63,7 @@ if (isCliCommand) {
     stdio: "inherit",
     env: {
       ...process.env,
-      AGENT_DECK_CLI_ARGS: JSON.stringify(args),
+      COMMANDER_GRAF_CLI_ARGS: JSON.stringify(args),
     },
     shell: false,
   });
@@ -79,14 +79,14 @@ if (isCliCommand) {
   // Help
   if (args.includes("--help") || args.includes("-h")) {
     console.log(`
-Agent Deck - Web-Based Agent Command Center
+Commander Graf - Web-Based Agent Command Center
 
 Usage:
-  agent-deck [command] [options]
+  commander-graf [command] [options]
 
 Server:
-  agent-deck                    Start server on default port (3002)
-  agent-deck serve [--port N]   Start server on specified port
+  commander-graf                    Start server on default port (3002)
+  commander-graf serve [--port N]   Start server on specified port
 
 CLI Commands:
   run <task> [--commit] [--pr]  Plan + Launch + Monitor + Deliver

@@ -76,7 +76,7 @@ export function TopBar({ project, activeWorkspace }: TopBarProps) {
     }
   }, [mode, activeWorkflow]);
 
-  const isElectron = !!(window as any).agentDeck?.isElectron;
+  const isElectron = !!(window as any).commanderGraf?.isElectron;
 
   return (
     <div className={`shrink-0 h-10 border-b border-deck-border bg-deck-surface flex items-center justify-between ${isElectron ? "pl-20 pr-4" : "px-4"}`} style={isElectron ? { WebkitAppRegion: "drag" } as any : undefined}>
@@ -94,7 +94,7 @@ export function TopBar({ project, activeWorkspace }: TopBarProps) {
           </button>
         )}
         <span className="text-xs font-semibold text-deck-text-bright truncate">
-          {activeWorkspace ? activeWorkspace.name : page === "home" ? "Agent Deck" : project?.name || "Agent Deck"}
+          {activeWorkspace ? activeWorkspace.name : page === "home" ? "Commander Graf" : project?.name || "Commander Graf"}
         </span>
         {activeWorkspace?.git_branch ? (
           <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-deck-surface-2 text-deck-text-dim truncate">

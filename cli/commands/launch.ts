@@ -1,5 +1,5 @@
 /**
- * agent-deck launch — Execute the last plan (or --plan <file>)
+ * commander-graf launch — Execute the last plan (or --plan <file>)
  */
 
 import { readFileSync } from "fs";
@@ -20,7 +20,7 @@ export async function execute({ client, args, flags }: CliContext): Promise<void
     saved = JSON.parse(readFileSync(planFile, "utf-8"));
   } catch {
     throw new Error(
-      `No plan found at ${planFile}\nRun: agent-deck plan <task>`
+      `No plan found at ${planFile}\nRun: commander-graf plan <task>`
     );
   }
 
@@ -46,5 +46,5 @@ export async function execute({ client, args, flags }: CliContext): Promise<void
   console.log(header("Launched"));
   console.log(formatStatus(workflow));
   console.log(`\n${success("Workflow started")}`);
-  console.log(`  Monitor: agent-deck status`);
+  console.log(`  Monitor: commander-graf status`);
 }

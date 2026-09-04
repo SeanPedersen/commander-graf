@@ -1,5 +1,5 @@
 /**
- * agent-deck status — Show active workflow status
+ * commander-graf status — Show active workflow status
  */
 
 import type { CliContext } from "../index.js";

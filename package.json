@@ -1,5 +1,5 @@
 {
-  "name": "@claude-world/agent-deck",
+  "name": "@claude-world/commander-graf",
   "version": "1.0.0",
   "type": "module",
   "main": "dist-electron/main.cjs",
@@ -21,11 +21,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/claude-world/agent-deck"
+    "url": "https://github.com/claude-world/commander-graf"
   },
-  "homepage": "https://github.com/claude-world/agent-deck",
+  "homepage": "https://github.com/claude-world/commander-graf",
   "bin": {
-    "agent-deck": "./bin/agent-deck.js"
+    "commander-graf": "./bin/commander-graf.js"
   },
   "files": [
     "bin/",
@@ -55,8 +55,8 @@
     "prepublishOnly": "npm run build && npm run build:cli"
   },
   "build": {
-    "appId": "com.claude-world.agent-deck",
-    "productName": "Agent Deck",
+    "appId": "com.claude-world.commander-graf",
+    "productName": "Commander Graf",
     "directories": {
       "output": "release"
     },

@@ -129,7 +129,7 @@ export class CodexAdapter extends EventEmitter implements AgentAdapter {
     return {
       ...process.env,
       ...config.env,
-      UV_CACHE_DIR: config.env?.UV_CACHE_DIR || join(workspace, ".agent-deck", "uv-cache"),
+      UV_CACHE_DIR: config.env?.UV_CACHE_DIR || join(workspace, ".commander-graf", "uv-cache"),
     };
   }
 

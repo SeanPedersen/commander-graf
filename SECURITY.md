@@ -11,11 +11,11 @@
 If you discover a security vulnerability, please report it responsibly:
 
 1. **Do NOT** open a public GitHub issue
-2. Email: security@claude-world.com or use [GitHub Security Advisories](https://github.com/claude-world/agent-deck/security/advisories/new)
+2. Email: security@claude-world.com or use [GitHub Security Advisories](https://github.com/claude-world/commander-graf/security/advisories/new)
 
 ## Security Design
 
-Agent Deck is designed as a **localhost-only** developer tool:
+Commander Graf is designed as a **localhost-only** developer tool:
 
 - The server binds to `127.0.0.1` only — never expose it on a public network
 - No authentication is required (localhost trust model)

@@ -1,5 +1,5 @@
 /**
- * Agent Deck - Database Schema & Queries
+ * Commander Graf - Database Schema & Queries
  *
  * Extends the existing studio.db with deck-specific tables.
  */

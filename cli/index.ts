@@ -1,5 +1,5 @@
 /**
- * Agent Deck CLI - Entry Point
+ * Commander Graf CLI - Entry Point
  *
  * Parses argv, dispatches to command handlers.
  * All commands support --json and --port flags.
@@ -83,10 +83,10 @@ const COMMANDS: Record<string, () => Promise<{ execute: (ctx: CliContext) => Pro
 
 function showHelp(): void {
   console.log(`
-${bold("Agent Deck CLI")}
+${bold("Commander Graf CLI")}
 
 ${bold("Usage:")}
-  agent-deck ${dim("[command] [options]")}
+  commander-graf ${dim("[command] [options]")}
 
 ${bold("Commands:")}
   ${bold("serve")}                       Start the server (default)
@@ -110,13 +110,13 @@ ${bold("Global Options:")}
   --help, -h                    Show help
 
 ${bold("Examples:")}
-  agent-deck run "add auth"                Full workflow
-  agent-deck run "add auth" --commit      Auto-commit after workflow
-  agent-deck run "add auth" --commit --pr Auto-commit + create PR
-  agent-deck plan "refactor database"      Plan only
-  agent-deck status --json                 JSON status
-  agent-deck agents                        List agents
-  agent-deck workspace add /path/to/proj   Add workspace
+  commander-graf run "add auth"                Full workflow
+  commander-graf run "add auth" --commit      Auto-commit after workflow
+  commander-graf run "add auth" --commit --pr Auto-commit + create PR
+  commander-graf plan "refactor database"      Plan only
+  commander-graf status --json                 JSON status
+  commander-graf agents                        List agents
+  commander-graf workspace add /path/to/proj   Add workspace
 `);
 }
 
@@ -131,7 +131,7 @@ export async function main(argv: string[]): Promise<void> {
     return;
   }
 
-  // No command or serve → handled by bin/agent-deck.js (should not reach here)
+  // No command or serve → handled by bin/commander-graf.js (should not reach here)
   if (!command || command === "serve") {
     showHelp();
     return;
@@ -141,7 +141,7 @@ export async function main(argv: string[]): Promise<void> {
   const loader = COMMANDS[command];
   if (!loader) {
     console.error(error(`Unknown command: ${command}`));
-    console.error(`Run ${dim("agent-deck --help")} for usage.`);
+    console.error(`Run ${dim("commander-graf --help")} for usage.`);
     process.exit(1);
   }
 

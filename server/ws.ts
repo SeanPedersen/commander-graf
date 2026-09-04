@@ -1,5 +1,5 @@
 /**
- * Agent Deck v1.0 - WebSocket Module
+ * Commander Graf v1.0 - WebSocket Module
  *
  * Extracted WS logic: subscribers, message routing, heartbeat.
  */
@@ -64,7 +64,7 @@ export function createWebSocketServer(
     ws.isAlive = true;
     ws.focusedAgentIds = new Set();
 
-    ws.send(JSON.stringify({ type: "connected", message: "Agent Deck v1.0" }));
+    ws.send(JSON.stringify({ type: "connected", message: "Commander Graf v1.0" }));
 
     ws.on("pong", () => { ws.isAlive = true; });
 

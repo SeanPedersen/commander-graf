@@ -1,5 +1,5 @@
 /**
- * agent-deck abort — Abort the active workflow
+ * commander-graf abort — Abort the active workflow
  */
 
 import type { CliContext } from "../index.js";

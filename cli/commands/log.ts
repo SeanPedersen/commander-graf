@@ -1,5 +1,5 @@
 /**
- * agent-deck log <agent-name> — View agent output
+ * commander-graf log <agent-name> — View agent output
  */
 
 import type { CliContext } from "../index.js";
@@ -8,7 +8,7 @@ import { header, dim, cyan, bold, colorStatus } from "../formatter.js";
 export async function execute({ client, args, flags }: CliContext): Promise<void> {
   const name = args[0];
   if (!name) {
-    throw new Error("Usage: agent-deck log <agent-name>");
+    throw new Error("Usage: commander-graf log <agent-name>");
   }
 
   // Find agent by name

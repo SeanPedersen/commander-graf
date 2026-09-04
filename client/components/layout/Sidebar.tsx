@@ -68,7 +68,7 @@ export function Sidebar() {
         </div>
         {!sidebarCollapsed && (
           <span className="text-xs font-semibold text-deck-text-bright truncate">
-            Agent Deck
+            Commander Graf
           </span>
         )}
       </div>

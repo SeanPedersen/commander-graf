@@ -1,7 +1,7 @@
 /**
- * Agent Deck CLI - HTTP/WebSocket Client
+ * Commander Graf CLI - HTTP/WebSocket Client
  *
- * Communicates with the Agent Deck server via REST API and WebSocket.
+ * Communicates with the Commander Graf server via REST API and WebSocket.
  * Auto-detects server port by scanning 3002-3007.
  */
 
@@ -39,7 +39,7 @@ export class DeckClient {
 
     const tried = ports.join(", ");
     throw new Error(
-      `No Agent Deck server found on ports ${tried}.\nStart the server with: agent-deck serve`
+      `No Commander Graf server found on ports ${tried}.\nStart the server with: commander-graf serve`
     );
   }
 

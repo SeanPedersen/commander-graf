@@ -357,7 +357,7 @@ function callClaude(
  *  Claude's --json-schema) — write it once per call into a scratch dir and
  *  remove that dir once the process is done with it, on every exit path. */
 function writeTaskGraphSchemaFile(): string {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "agent-deck-schema-"));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "commander-graf-schema-"));
   const file = path.join(dir, "task-graph.schema.json");
   fs.writeFileSync(file, JSON.stringify(JSON_SCHEMA_TASK_GRAPH));
   return file;

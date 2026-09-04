@@ -1,16 +1,16 @@
 /**
- * CLI entry point — invoked by bin/agent-deck.js via tsx or pre-built bundle.
- * Reads args from AGENT_DECK_CLI_ARGS env variable.
+ * CLI entry point — invoked by bin/commander-graf.js via tsx or pre-built bundle.
+ * Reads args from COMMANDER_GRAF_CLI_ARGS env variable.
  */
 
 import { main } from "./index.js";
 
 let args: string[];
 try {
-  args = JSON.parse(process.env.AGENT_DECK_CLI_ARGS || "[]");
+  args = JSON.parse(process.env.COMMANDER_GRAF_CLI_ARGS || "[]");
   if (!Array.isArray(args)) args = [];
 } catch {
-  console.error("Invalid AGENT_DECK_CLI_ARGS environment variable");
+  console.error("Invalid COMMANDER_GRAF_CLI_ARGS environment variable");
   process.exit(1);
 }
 

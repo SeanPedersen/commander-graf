@@ -1,5 +1,5 @@
 /**
- * Normalizes OpenCode `run --format json` events for Agent Deck's runtime-neutral UI.
+ * Normalizes OpenCode `run --format json` events for Commander Graf's runtime-neutral UI.
  */
 
 import { EventEmitter } from "events";

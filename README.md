@@ -23,7 +23,7 @@ Claude Code, OpenAI Codex, OpenCode
 ## Quick Start
 
 ```bash
-npx agent-deck
+npx commander-graf
 ```
 
 Open **http://localhost:3002** — add your project, describe a task, and launch.
@@ -36,8 +36,8 @@ Open **http://localhost:3002** — add your project, describe a task, and launch
 ### From source
 
 ```bash
-git clone https://github.com/claude-world/agent-deck.git
-cd agent-deck
+git clone https://github.com/claude-world/commander-graf.git
+cd commander-graf
 npm install
 npm run dev        # Dev mode with hot reload (localhost:5200)
 ```
@@ -95,7 +95,7 @@ Run any model supported by [LiteLLM](https://github.com/BerriAI/litellm):
 
 ```bash
 litellm --model gpt-4o                                    # Start proxy
-LITELLM_PROXY_URL=http://localhost:4000 npx agent-deck     # Connect
+LITELLM_PROXY_URL=http://localhost:4000 npx commander-graf     # Connect
 ```
 
 ### Keyboard Shortcuts
@@ -120,7 +120,7 @@ LITELLM_PROXY_URL=http://localhost:4000 npx agent-deck     # Connect
 | `LITELLM_PROXY_URL` | — | LiteLLM proxy URL |
 | `AGENT_STATE_DB` | `~/.claude/agent-state.db` | Agent-state bridge (read-only) |
 
-Codex reports token usage rather than billed USD in its CLI event stream. Agent Deck stores those tokens and shows an API-equivalent estimate using the selected model's published per-token rates; it is not an invoice for a ChatGPT plan.
+Codex reports token usage rather than billed USD in its CLI event stream. Commander Graf stores those tokens and shows an API-equivalent estimate using the selected model's published per-token rates; it is not an invoice for a ChatGPT plan.
 
 ## API
 
@@ -170,7 +170,7 @@ npm start             # Production server
 ### Project Structure
 
 ```
-agent-deck/
+commander-graf/
 ├── client/                    # React frontend
 │   ├── pages/                 # Home, CommandCenter, History, Settings
 │   ├── components/

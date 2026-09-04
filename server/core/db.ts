@@ -1,5 +1,5 @@
 /**
- * Agent Deck v1.0 - Database Schema & Store
+ * Commander Graf v1.0 - Database Schema & Store
  *
  * Unified DB module with enhanced schema for workflows, settings, and agent events.
  */

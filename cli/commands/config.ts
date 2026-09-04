@@ -1,21 +1,21 @@
 /**
- * agent-deck config — View or update settings
+ * commander-graf config — View or update settings
  *
  * Usage:
- *   agent-deck config              View all settings
- *   agent-deck config set key val  Update a setting
+ *   commander-graf config              View all settings
+ *   commander-graf config set key val  Update a setting
  */
 
 import type { CliContext } from "../index.js";
 import { formatConfig, header, success, dim } from "../formatter.js";
 
 export async function execute({ client, args, flags }: CliContext): Promise<void> {
-  // agent-deck config set <key> <val>
+  // commander-graf config set <key> <val>
   if (args[0] === "set" && args[1]) {
     const key = args[1];
     const val = args[2];
     if (val === undefined) {
-      throw new Error(`Usage: agent-deck config set <key> <value>`);
+      throw new Error(`Usage: commander-graf config set <key> <value>`);
     }
 
     // Try to parse as number or boolean
@@ -35,7 +35,7 @@ export async function execute({ client, args, flags }: CliContext): Promise<void
     return;
   }
 
-  // agent-deck config (view)
+  // commander-graf config (view)
   const settings = await client.get("/api/deck/settings");
 
   if (flags.json) {
@@ -45,5 +45,5 @@ export async function execute({ client, args, flags }: CliContext): Promise<void
 
   console.log(header("Settings"));
   console.log(formatConfig(settings));
-  console.log(`\n  ${dim("Update: agent-deck config set <key> <value>")}`);
+  console.log(`\n  ${dim("Update: commander-graf config set <key> <value>")}`);
 }

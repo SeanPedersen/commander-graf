@@ -1,5 +1,5 @@
 /**
- * agent-deck history — Workflow history
+ * commander-graf history — Workflow history
  */
 
 import type { CliContext } from "../index.js";

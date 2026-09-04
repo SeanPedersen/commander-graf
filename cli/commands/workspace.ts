@@ -1,5 +1,5 @@
 /**
- * agent-deck workspace list|add|remove — Manage workspaces
+ * commander-graf workspace list|add|remove — Manage workspaces
  */
 
 import { resolve } from "path";
@@ -41,7 +41,7 @@ export async function execute({ client, args, flags }: CliContext): Promise<void
     case "rm": {
       const id = args[1];
       if (!id) {
-        throw new Error("Usage: agent-deck workspace remove <id-or-path>");
+        throw new Error("Usage: commander-graf workspace remove <id-or-path>");
       }
 
       // Try to find by path first
@@ -63,6 +63,6 @@ export async function execute({ client, args, flags }: CliContext): Promise<void
     }
 
     default:
-      throw new Error(`Unknown workspace subcommand: ${sub}\nUsage: agent-deck workspace list|add|remove`);
+      throw new Error(`Unknown workspace subcommand: ${sub}\nUsage: commander-graf workspace list|add|remove`);
   }
 }

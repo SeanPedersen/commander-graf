@@ -129,7 +129,7 @@ wss.on("connection", (ws: WSClient) => {
   ws.isAlive = true;
   ws.focusedAgentIds = new Set();
 
-  ws.send(JSON.stringify({ type: "connected", message: "Agent Deck" }));
+  ws.send(JSON.stringify({ type: "connected", message: "Commander Graf" }));
 
   ws.on("pong", () => {
     ws.isAlive = true;
@@ -237,7 +237,7 @@ if (litellmBridge.isEnabled()) {
 
 // Start
 server.listen(PORT, () => {
-  console.log(`Agent Deck running at http://localhost:${PORT}`);
+  console.log(`Commander Graf running at http://localhost:${PORT}`);
   console.log(`WebSocket at ws://localhost:${PORT}/ws`);
   console.log(`Dev frontend at http://localhost:5200`);
 });

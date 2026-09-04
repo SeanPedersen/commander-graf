@@ -16,7 +16,7 @@ await build({
   format: "esm",
   external: ["ws"],
   banner: {
-    js: "// Agent Deck CLI - bundled with esbuild",
+    js: "// Commander Graf CLI - bundled with esbuild",
   },
   sourcemap: true,
   minify: false,

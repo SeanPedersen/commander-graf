@@ -5,7 +5,7 @@
  * 1. Runtime overrides (from API call)
  * 2. Environment variables (DECK_*)
  * 3. deck.yaml project config
- * 4. ~/.config/agent-deck/config.yaml global config
+ * 4. ~/.config/commander-graf/config.yaml global config
  * 5. Built-in defaults
  */
 
@@ -31,7 +31,7 @@ export function resolveSettings(
   // Layer 5: Built-in defaults
   const result: DeckSettings = { ...DEFAULT_SETTINGS };
 
-  // Layer 4: Global config (~/.config/agent-deck/config.yaml)
+  // Layer 4: Global config (~/.config/commander-graf/config.yaml)
   const globalConfig = loadGlobalConfig();
   if (globalConfig?.settings) {
     applySettingsLayer(result, globalConfig.settings);
@@ -108,7 +108,7 @@ function loadGlobalConfig(): ConfigFile | null {
   const configPath = path.join(
     os.homedir(),
     ".config",
-    "agent-deck",
+    "commander-graf",
     "config.yaml"
   );
   return loadYamlConfig(configPath);

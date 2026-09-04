@@ -1,5 +1,5 @@
 /**
- * Agent Deck v1.0 - Core Type Definitions
+ * Commander Graf v1.0 - Core Type Definitions
  *
  * Single source of truth for all types used across server and client.
  */

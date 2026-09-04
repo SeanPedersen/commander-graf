@@ -1,5 +1,5 @@
 /**
- * agent-deck run <task> — Plan + Launch + Monitor + Finalize
+ * commander-graf run <task> — Plan + Launch + Monitor + Finalize
  *
  * The main workflow command. Connects via WebSocket for real-time updates.
  * --json mode outputs NDJSON (one JSON object per line per event).
@@ -22,7 +22,7 @@ export async function execute({ client, args, flags }: CliContext): Promise<void
   const doCommit = args.includes("--commit") || doPr || doPush;
 
   if (!task) {
-    throw new Error("Usage: agent-deck run <task> [--commit] [--pr] [--push] [--no-finalize]");
+    throw new Error("Usage: commander-graf run <task> [--commit] [--pr] [--push] [--no-finalize]");
   }
 
   // ─── Step 1: Plan ─────────────────────────────────
@@ -65,7 +65,7 @@ export async function execute({ client, args, flags }: CliContext): Promise<void
 
     const timeoutId = setTimeout(() => {
       if (!resolved) {
-        if (!flags.json) console.log(dim("\n  Timeout — workflow still running. Check with: agent-deck status"));
+        if (!flags.json) console.log(dim("\n  Timeout — workflow still running. Check with: commander-graf status"));
         finish();
       }
     }, 30 * 60 * 1000);
@@ -262,7 +262,7 @@ export async function execute({ client, args, flags }: CliContext): Promise<void
   } else {
     // No --commit flag — hint to user
     if (!flags.json) {
-      console.log(dim(`\n  Commit with: agent-deck commit -m 'msg' --all`));
+      console.log(dim(`\n  Commit with: commander-graf commit -m 'msg' --all`));
     }
   }
 }

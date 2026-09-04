@@ -61,7 +61,7 @@ export function Settings() {
 
   return <div className="h-full overflow-y-auto p-6"><div className="max-w-2xl mx-auto space-y-8">
     <section><h2 className="text-sm font-semibold text-deck-text-bright mb-4">Runtimes</h2><div className="space-y-3 bg-deck-surface rounded-lg border border-deck-border p-5">
-      <p className="text-xs text-deck-muted">Detected when Agent Deck started. Only active runtimes contribute models to routing.</p>
+      <p className="text-xs text-deck-muted">Detected when Commander Graf started. Only active runtimes contribute models to routing.</p>
       {runtimes.map((runtime) => <label key={runtime.id} className={`flex items-center justify-between rounded border p-3 ${runtime.detected ? "border-deck-border" : "border-deck-border opacity-50"}`}><span><span className="text-xs text-deck-text">{runtime.label}</span><span className="ml-2 text-[10px] text-deck-muted">{runtime.detected ? "Detected" : "Not installed"}</span></span><input type="checkbox" checked={settings.activeRuntimes.includes(runtime.id)} disabled={!runtime.detected} onChange={() => toggleRuntime(runtime.id)} className="accent-deck-accent" /></label>)}
     </div></section>
     <section><h2 className="text-sm font-semibold text-deck-text-bright mb-4">General Settings</h2><div className="space-y-4 bg-deck-surface rounded-lg border border-deck-border p-5">

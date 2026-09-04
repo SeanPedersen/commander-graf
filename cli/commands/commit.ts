@@ -1,5 +1,5 @@
 /**
- * agent-deck commit -m "msg" [--push] [--all] — Non-interactive finalize
+ * commander-graf commit -m "msg" [--push] [--all] — Non-interactive finalize
  *
  * Without --all: commits only staged files. If none staged, errors.
  * With --all: commits all changed files.
@@ -12,7 +12,7 @@ export async function execute({ client, args, flags }: CliContext): Promise<void
   // Parse -m "message"
   const msgIdx = args.indexOf("-m");
   if (msgIdx === -1 || !args[msgIdx + 1]) {
-    throw new Error("Usage: agent-deck commit -m \"commit message\" [--push] [--all]");
+    throw new Error("Usage: commander-graf commit -m \"commit message\" [--push] [--all]");
   }
   const message = args[msgIdx + 1];
   const push = args.includes("--push");
