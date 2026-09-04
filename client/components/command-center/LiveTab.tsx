@@ -83,16 +83,7 @@ function LiveEventLine({ event }: { event: StreamEvent }) {
         </pre>
       );
     case "tool_call": {
-      const toolName =
-        event.data?.toolName
-          ?.replace(/^mcp__[^_]+__/, "")
-          .replace(/_/g, " ") || "unknown";
-      return (
-        <div className="text-deck-info py-0.5 flex items-center gap-1.5">
-          <span className="text-[10px] text-deck-info/60">{">"}</span>
-          <span>{toolName}</span>
-        </div>
-      );
+      return <ToolCallLine event={event} />;
     }
     case "tool_result":
       return <ToolResultLine event={event} />;
@@ -118,6 +109,42 @@ function LiveEventLine({ event }: { event: StreamEvent }) {
     default:
       return null;
   }
+}
+
+function ToolCallLine({ event }: { event: StreamEvent }) {
+  const [expanded, setExpanded] = useState(false);
+  const toolName =
+    event.data?.toolName
+      ?.replace(/^mcp__[^_]+__/, "")
+      .replace(/_/g, " ") || "unknown";
+  const input = event.data?.toolInput;
+  const detail = input === undefined
+    ? null
+    : typeof input === "string"
+      ? input
+      : JSON.stringify(input, null, 2);
+
+  return (
+    <div className="mb-1 rounded border-l-2 border-deck-info/50 bg-deck-surface-2/20">
+      <button
+        type="button"
+        onClick={() => detail && setExpanded((value) => !value)}
+        aria-expanded={detail ? expanded : undefined}
+        disabled={!detail}
+        className="flex w-full min-w-0 items-center gap-1.5 px-2 py-1 text-left text-deck-info disabled:cursor-default"
+      >
+        <span className="shrink-0 text-[10px] opacity-70" aria-hidden="true">
+          {detail ? (expanded ? "▼" : "▶") : ">"}
+        </span>
+        <span className="truncate font-medium">{toolName}</span>
+      </button>
+      {expanded && detail && (
+        <pre className="mt-0.5 max-h-48 overflow-y-auto px-3 pb-2 whitespace-pre-wrap break-words text-[11px] leading-relaxed text-deck-text-dim">
+          {detail}
+        </pre>
+      )}
+    </div>
+  );
 }
 
 function ToolResultLine({ event }: { event: StreamEvent }) {
